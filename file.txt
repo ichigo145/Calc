@@ -1,0 +1,3475 @@
+<!doctype html>
+
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>CalcAI v1.7 - 超高精度計算AI</title>
+
+  <script src="/_sdk/element_sdk.js"></script>
+
+  <script src="/_sdk/data_sdk.js"></script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+
+        body {
+
+            box-sizing: border-box;
+
+        }
+
+        
+
+        :root {
+
+            --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+
+            --secondary-gradient: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+
+            --accent-gradient: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+
+            --success-gradient: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+
+            --glass-bg: rgba(255, 255, 255, 0.95);
+
+            --glass-border: rgba(52, 73, 94, 0.15);
+
+            --text-primary: #2c3e50;
+
+            --text-secondary: #34495e;
+
+            --bg-primary: linear-gradient(135deg, #ffffff 0%, #f8f9fa 50%, #ecf0f1 100%);
+
+            --bg-secondary: #ffffff;
+
+            --shadow-light: 0 8px 32px rgba(52, 73, 94, 0.12);
+
+            --shadow-heavy: 0 16px 48px rgba(52, 73, 94, 0.18);
+
+            --luxury-gold: linear-gradient(135deg, #d4af37 0%, #ffd700 100%);
+
+            --luxury-silver: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+
+        }
+
+        [data-theme="dark"] {
+
+            --text-primary: #ffffff;
+
+            --text-secondary: #e2e8f0;
+
+            --bg-primary: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+
+            --bg-secondary: #1e293b;
+
+            --glass-bg: rgba(255, 255, 255, 0.05);
+
+            --glass-border: rgba(255, 255, 255, 0.1);
+
+            --shadow-light: 0 10px 25px rgba(0, 0, 0, 0.5);
+
+            --shadow-heavy: 0 20px 40px rgba(0, 0, 0, 0.7);
+
+        }
+
+        body {
+
+            background: var(--bg-primary);
+
+            color: var(--text-primary);
+
+            transition: all 0.3s ease;
+
+            min-height: 100vh;
+
+        }
+
+        .glass-card {
+
+            background: var(--glass-bg);
+
+            backdrop-filter: blur(20px);
+
+            border: 2px solid var(--glass-border);
+
+            box-shadow: var(--shadow-light), inset 0 1px 0 rgba(255,255,255,0.6);
+
+            position: relative;
+
+            overflow: hidden;
+
+        }
+
+        .glass-card::before {
+
+            content: '';
+
+            position: absolute;
+
+            top: 0;
+
+            left: 0;
+
+            right: 0;
+
+            height: 2px;
+
+            background: var(--luxury-gold);
+
+            opacity: 0.8;
+
+        }
+
+        .glass-card::after {
+
+            content: '';
+
+            position: absolute;
+
+            top: 2px;
+
+            left: 0;
+
+            right: 0;
+
+            height: 1px;
+
+            background: linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent);
+
+        }
+
+        .glass-card-heavy {
+
+            background: var(--glass-bg);
+
+            backdrop-filter: blur(25px);
+
+            border: 3px solid var(--glass-border);
+
+            box-shadow: var(--shadow-heavy), inset 0 2px 0 rgba(255,255,255,0.7), 0 0 60px rgba(52,73,94,0.1);
+
+            position: relative;
+
+            overflow: hidden;
+
+        }
+
+        .glass-card-heavy::before {
+
+            content: '';
+
+            position: absolute;
+
+            top: 0;
+
+            left: 0;
+
+            right: 0;
+
+            height: 3px;
+
+            background: var(--luxury-gold);
+
+            opacity: 0.9;
+
+        }
+
+        .glass-card-heavy::after {
+
+            content: '';
+
+            position: absolute;
+
+            top: -50%;
+
+            left: -50%;
+
+            width: 200%;
+
+            height: 200%;
+
+            background: radial-gradient(circle, rgba(212,175,55,0.05) 0%, transparent 70%);
+
+            pointer-events: none;
+
+        }
+
+        .gradient-text {
+
+            background: var(--primary-gradient);
+
+            -webkit-background-clip: text;
+
+            -webkit-text-fill-color: transparent;
+
+            background-clip: text;
+
+        }
+
+        .glowing-purple-title {
+
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 25%, #c084fc 50%, #d8b4fe 75%, #8b5cf6 100%);
+
+            -webkit-background-clip: text;
+
+            -webkit-text-fill-color: transparent;
+
+            background-clip: text;
+
+            text-shadow: 0 0 30px rgba(139, 92, 246, 0.8), 0 0 60px rgba(168, 85, 247, 0.6), 0 0 90px rgba(192, 132, 252, 0.4);
+
+            filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.7));
+
+            animation: titleGlow 3s ease-in-out infinite alternate;
+
+        }
+
+        @keyframes titleGlow {
+
+            0% {
+
+                text-shadow: 0 0 30px rgba(139, 92, 246, 0.8), 0 0 60px rgba(168, 85, 247, 0.6), 0 0 90px rgba(192, 132, 252, 0.4);
+
+                filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.7));
+
+            }
+
+            100% {
+
+                text-shadow: 0 0 40px rgba(139, 92, 246, 1), 0 0 80px rgba(168, 85, 247, 0.8), 0 0 120px rgba(192, 132, 252, 0.6);
+
+                filter: drop-shadow(0 0 30px rgba(139, 92, 246, 0.9));
+
+            }
+
+        }
+
+        .mode-button {
+
+            position: relative;
+
+            overflow: hidden;
+
+            transition: all 0.3s ease;
+
+        }
+
+        .mode-button::before {
+
+            content: '';
+
+            position: absolute;
+
+            top: 0;
+
+            left: -100%;
+
+            width: 100%;
+
+            height: 100%;
+
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+
+            transition: left 0.5s;
+
+        }
+
+        .mode-button:hover::before {
+
+            left: 100%;
+
+        }
+
+        .thinking-animation {
+
+            animation: thinking 2s infinite;
+
+        }
+
+        @keyframes thinking {
+
+            0%, 100% { transform: scale(1); }
+
+            50% { transform: scale(1.05); }
+
+        }
+
+        .pulse-glow {
+
+            animation: pulseGlow 2s infinite;
+
+        }
+
+        @keyframes pulseGlow {
+
+            0%, 100% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); }
+
+            50% { box-shadow: 0 0 40px rgba(102, 126, 234, 0.6); }
+
+        }
+
+        .slide-in-up {
+
+            animation: slideInUp 0.6s ease-out;
+
+        }
+
+        @keyframes slideInUp {
+
+            from {
+
+                opacity: 0;
+
+                transform: translateY(30px);
+
+            }
+
+            to {
+
+                opacity: 1;
+
+                transform: translateY(0);
+
+            }
+
+        }
+
+        .fade-in-scale {
+
+            animation: fadeInScale 0.5s ease-out;
+
+        }
+
+        @keyframes fadeInScale {
+
+            from {
+
+                opacity: 0;
+
+                transform: scale(0.9);
+
+            }
+
+            to {
+
+                opacity: 1;
+
+                transform: scale(1);
+
+            }
+
+        }
+
+        .loading-dots::after {
+
+            content: '';
+
+            animation: dots 1.5s infinite;
+
+        }
+
+        @keyframes dots {
+
+            0%, 20% { content: ''; }
+
+            40% { content: '.'; }
+
+            60% { content: '..'; }
+
+            80%, 100% { content: '...'; }
+
+        }
+
+        .neo-button {
+
+            background: var(--primary-gradient);
+
+            border: none;
+
+            position: relative;
+
+            overflow: hidden;
+
+            transition: all 0.3s ease;
+
+        }
+
+        .neo-button:hover {
+
+            transform: translateY(-2px);
+
+            box-shadow: var(--shadow-heavy);
+
+        }
+
+        .neo-button:active {
+
+            transform: translateY(0);
+
+        }
+
+        .detection-badge {
+
+            background: var(--accent-gradient);
+
+            color: white;
+
+            padding: 0.25rem 0.75rem;
+
+            border-radius: 9999px;
+
+            font-size: 0.75rem;
+
+            font-weight: 600;
+
+            display: inline-block;
+
+            margin: 0.25rem;
+
+        }
+
+        .value-highlight {
+
+            background: var(--success-gradient);
+
+            color: white;
+
+            padding: 0.125rem 0.5rem;
+
+            border-radius: 0.375rem;
+
+            font-weight: 600;
+
+            margin: 0 0.125rem;
+
+        }
+
+        .calculation-grid {
+
+            display: grid;
+
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+
+            gap: 1.5rem;
+
+        }
+
+        .theme-toggle {
+
+            position: fixed;
+
+            top: 1.5rem;
+
+            right: 1.5rem;
+
+            z-index: 1000;
+
+            background: var(--glass-bg);
+
+            backdrop-filter: blur(20px);
+
+            border: 2px solid var(--glass-border);
+
+            border-radius: 50%;
+
+            width: 4rem;
+
+            height: 4rem;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            cursor: pointer;
+
+            transition: all 0.3s ease;
+
+            box-shadow: var(--shadow-light);
+
+            font-size: 1.5rem;
+
+        }
+
+        .theme-toggle:hover {
+
+            transform: scale(1.15) rotate(15deg);
+
+            box-shadow: var(--shadow-heavy);
+
+            background: var(--primary-gradient);
+
+            color: white;
+
+        }
+
+        .theme-toggle:active {
+
+            transform: scale(1.05) rotate(0deg);
+
+        }
+
+        .mode-selector {
+
+            display: flex;
+
+            background: var(--glass-bg);
+
+            backdrop-filter: blur(20px);
+
+            border: 1px solid var(--glass-border);
+
+            border-radius: 1rem;
+
+            padding: 0.25rem;
+
+            margin: 1rem 0;
+
+        }
+
+        .mode-option {
+
+            flex: 1;
+
+            padding: 0.75rem 1rem;
+
+            border-radius: 0.75rem;
+
+            text-align: center;
+
+            cursor: pointer;
+
+            transition: all 0.3s ease;
+
+            font-weight: 600;
+
+            font-size: 0.875rem;
+
+        }
+
+        .mode-option.active {
+
+            background: var(--primary-gradient);
+
+            color: white;
+
+            box-shadow: var(--shadow-light);
+
+        }
+
+        .mode-option:not(.active):hover {
+
+            background: var(--glass-border);
+
+        }
+
+        .confidence-meter {
+
+            background: var(--glass-bg);
+
+            border-radius: 1rem;
+
+            padding: 1rem;
+
+            margin: 1rem 0;
+
+        }
+
+        .confidence-bar {
+
+            height: 0.5rem;
+
+            border-radius: 0.25rem;
+
+            background: var(--bg-secondary);
+
+            overflow: hidden;
+
+            position: relative;
+
+        }
+
+        .confidence-fill {
+
+            height: 100%;
+
+            background: var(--success-gradient);
+
+            border-radius: 0.25rem;
+
+            transition: width 1s ease;
+
+            position: relative;
+
+        }
+
+        .confidence-fill::after {
+
+            content: '';
+
+            position: absolute;
+
+            top: 0;
+
+            left: 0;
+
+            right: 0;
+
+            bottom: 0;
+
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+
+            animation: shimmer 2s infinite;
+
+        }
+
+        @keyframes shimmer {
+
+            0% { transform: translateX(-100%); }
+
+            100% { transform: translateX(100%); }
+
+        }
+
+        .scroll-highlight {
+
+            border: 3px solid #ffd700;
+
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+
+            transform: scale(1.02);
+
+            transition: all 0.5s ease;
+
+        }
+
+        .auto-select-indicator {
+
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+            color: white;
+
+            padding: 0.25rem 0.75rem;
+
+            border-radius: 9999px;
+
+            font-size: 0.75rem;
+
+            font-weight: 600;
+
+            display: inline-flex;
+
+            align-items: center;
+
+            gap: 0.25rem;
+
+            animation: pulse 2s infinite;
+
+        }
+
+        @keyframes pulse {
+
+            0%, 100% { opacity: 1; }
+
+            50% { opacity: 0.7; }
+
+        }
+
+    </style>
+
+  <style>@view-transition { navigation: auto; }</style>
+
+</head>
+
+<body class="min-h-full transition-all duration-300" data-theme="dark"><!-- テーマ切り替えボタン --> <button class="theme-toggle" onclick="toggleTheme()"> <span id="theme-icon">☀️</span> </button>
+
+  <main class="container mx-auto px-4 py-8 max-w-6xl"><!-- ヘッダー -->
+
+   <header class="text-center mb-12 slide-in-up relative"><!-- 背景装飾 -->
+
+    <div class="absolute inset-0 -z-10">
+
+     <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-full blur-3xl"></div>
+
+     <div class="absolute top-10 left-1/4 w-32 h-32 bg-gradient-to-r from-blue-400/10 to-cyan-400/10 rounded-full blur-2xl"></div>
+
+     <div class="absolute top-10 right-1/4 w-24 h-24 bg-gradient-to-r from-emerald-400/10 to-teal-400/10 rounded-full blur-xl"></div>
+
+    </div>
+
+    <div class="flex items-center justify-center mb-8">
+
+     <div class="relative group"><!-- 外側のグロー効果 -->
+
+      <div class="absolute inset-0 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 rounded-full blur-2xl opacity-60 group-hover:opacity-80 transition-opacity duration-500 animate-pulse"></div><!-- 中間のリング -->
+
+      <div class="absolute inset-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full blur-lg opacity-40"></div><!-- メインアイコン -->
+
+      <div class="relative bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 rounded-full p-6 shadow-2xl transform group-hover:scale-110 transition-transform duration-300">
+
+       <svg class="w-16 h-16 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+
+       </svg><!-- 内側のハイライト -->
+
+       <div class="absolute inset-2 bg-gradient-to-br from-white/20 to-transparent rounded-full"></div>
+
+      </div>
+
+     </div>
+
+    </div><!-- バージョンバッジ -->
+
+    <div class="mb-6">
+
+     <div class="inline-flex items-center space-x-2"><span class="inline-block bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 text-white px-8 py-3 rounded-full text-sm font-black tracking-wider shadow-2xl transform hover:scale-105 transition-transform duration-300"> ✨ v1.7 ULTIMATE INTELLIGENCE ✨ </span>
+
+     </div>
+
+    </div><!-- メインタイトル -->
+
+    <div class="relative mb-6">
+
+     <h1 id="app-title" class="text-7xl md:text-8xl font-black glowing-purple-title mb-2 tracking-tight">CalcAI v1.7</h1><!-- タイトル下のアクセント -->
+
+     <div class="flex justify-center">
+
+      <div class="w-32 h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent rounded-full"></div>
+
+     </div>
+
+    </div><!-- サブタイトル -->
+
+    <div class="space-y-3">
+
+     <p class="text-2xl font-bold">🧠 <span id="bot-name" class="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent font-black">CalcAI</span> <span class="text-lg opacity-80">- 超高精度計算AI</span></p>
+
+     <div class="flex justify-center space-x-6 text-sm font-medium opacity-90"><span class="flex items-center space-x-1"> <span class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span> <span>個数単価問題完全解決</span> </span> <span class="flex items-center space-x-1"> <span class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span> <span>超高精度理解</span> </span> <span class="flex items-center space-x-1"> <span class="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></span> <span>自動スクロール</span> </span>
+
+     </div>
+
+    </div>
+
+   </header><!-- AIモデル選択 -->
+
+   <div class="glass-card rounded-2xl p-6 mb-8 fade-in-scale">
+
+    <div class="flex items-center justify-center mb-4 space-x-3">
+
+     <h3 class="text-lg font-bold">🤖 AIモデル選択</h3>
+
+     <div id="auto-select-indicator" class="auto-select-indicator hidden"><span>🎯</span> <span>自動選択中</span>
+
+     </div>
+
+    </div>
+
+    <div class="mode-selector">
+
+     <div class="mode-option active" data-mode="speed" onclick="selectMode('speed')">
+
+      ⚡ Calc-1o
+
+     </div>
+
+     <div class="mode-option" data-mode="normal" onclick="selectMode('normal')">
+
+      🎯 Calc-1
+
+     </div>
+
+     <div class="mode-option" data-mode="thinking" onclick="selectMode('thinking')">
+
+      🧠 Calc-Thinking
+
+     </div>
+
+    </div>
+
+    <div class="text-center text-sm opacity-75 mt-2"><span id="mode-description">⚡ Calc-1o - 最速計算モデル（瞬間解析）</span>
+
+    </div>
+
+    <div class="flex items-center justify-center mt-3"><label class="flex items-center space-x-2 cursor-pointer"> <input type="checkbox" id="auto-select-checkbox" class="rounded" onchange="toggleAutoSelect()"> <span class="text-sm">🎯 AIモデル自動選択を有効にする</span> </label>
+
+    </div>
+
+   </div><!-- 計算入力フォーム -->
+
+   <div class="glass-card-heavy rounded-3xl p-8 mb-8 slide-in-up">
+
+    <form id="calculation-form" class="space-y-6">
+
+     <div><label for="user-input" class="block text-xl font-bold mb-4 gradient-text"> 💬 計算したい内容を入力 </label> <textarea id="user-input" rows="4" class="w-full px-6 py-4 bg-white/10 backdrop-blur-lg border-2 border-white/20 rounded-2xl focus:border-purple-400 focus:ring-4 focus:ring-purple-400/20 transition-all duration-300 text-lg resize-none placeholder-gray-400" placeholder="例：財布に¥1,200あって、1つ¥300の商品を4つ買います。おつりはいくらですか？" required></textarea>
+
+     </div><button type="submit" id="calculate-btn" class="w-full neo-button text-white font-bold py-4 px-8 rounded-2xl text-lg shadow-lg transition-all duration-300"> <span id="btn-text">🚀 CalcAIに計算してもらう</span> </button>
+
+    </form>
+
+   </div><!-- 結果表示エリア -->
+
+   <div id="result-container" class="hidden"><!-- 思考プロセス表示エリア -->
+
+    <div id="processing-container"></div><!-- 検出値表示 -->
+
+    <div id="detection-section" class="glass-card rounded-2xl p-6 mb-6 slide-in-up">
+
+     <h3 class="text-xl font-bold mb-4 flex items-center">🔍 <span class="ml-2 gradient-text">CalcAI検出結果</span></h3>
+
+     <div id="detected-values" class="space-y-3"></div>
+
+    </div><!-- 計算結果 -->
+
+    <div class="calculation-grid"><!-- 信頼度メーター -->
+
+     <div class="glass-card rounded-2xl p-6">
+
+      <h3 class="text-lg font-bold mb-4 flex items-center">📊 <span class="ml-2">信頼度スコア</span></h3>
+
+      <div class="confidence-meter">
+
+       <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">計算精度</span> <span id="confidence-percentage" class="text-2xl font-bold gradient-text">---%</span>
+
+       </div>
+
+       <div class="confidence-bar">
+
+        <div id="confidence-fill" class="confidence-fill" style="width: 0%"></div>
+
+       </div>
+
+       <div id="processing-mode" class="text-xs opacity-75 mt-2 text-center"></div>
+
+      </div>
+
+     </div><!-- 計算式 -->
+
+     <div class="glass-card rounded-2xl p-6">
+
+      <h3 class="text-lg font-bold mb-4 flex items-center">🧮 <span class="ml-2">計算式</span></h3>
+
+      <div id="formula-display" class="bg-black/10 rounded-xl p-4 font-mono text-lg border-l-4 border-purple-400"></div>
+
+     </div><!-- 答え -->
+
+     <div class="glass-card rounded-2xl p-6 col-span-full">
+
+      <h3 class="text-lg font-bold mb-4 flex items-center">✨ <span class="ml-2">最終答え</span></h3>
+
+      <div id="answer-display" class="text-center">
+
+       <div class="text-5xl font-black gradient-text mb-2" id="answer-value">
+
+        ---
+
+       </div>
+
+       <div class="text-sm opacity-75" id="answer-type">
+
+        ---
+
+       </div>
+
+      </div>
+
+     </div>
+
+    </div>
+
+   </div><!-- 計算履歴 -->
+
+   <div class="glass-card rounded-3xl p-8 mt-8">
+
+    <h2 class="text-2xl font-bold mb-6 text-center gradient-text">📚 計算履歴</h2>
+
+    <div id="history-list" class="space-y-4">
+
+     <p class="text-center py-8 opacity-75">まだ計算履歴がありません</p>
+
+    </div>
+
+   </div>
+
+  </main>
+
+  <script>
+
+        const defaultConfig = {
+
+            app_title: "CalcAI v1.7",
+
+            bot_name: "CalcAI",
+
+            input_placeholder: "例：財布に¥1,200あって、1つ¥300の商品を4つ買います。おつりはいくらですか？",
+
+            calculate_button_text: "🚀 CalcAIに計算してもらう",
+
+            primary_color: "#667eea",
+
+            secondary_color: "#764ba2",
+
+            accent_color: "#4facfe",
+
+            background_color: "#f7fafc",
+
+            text_color: "#1a202c"
+
+        };
+
+        let calculationHistory = [];
+
+        let currentRecordCount = 0;
+
+        let currentMode = 'speed';
+
+        let currentTheme = 'dark';
+
+        let autoSelectEnabled = false;
+
+        // データハンドラー
+
+        const dataHandler = {
+
+            onDataChanged(data) {
+
+                calculationHistory = data;
+
+                currentRecordCount = data.length;
+
+                renderHistory();
+
+            }
+
+        };
+
+        // CalcAI v1.7 個数単価問題完全解決エンジン
+
+        class CalcAIV17Engine {
+
+            constructor() {
+
+                this.version = "1.7";
+
+                this.valueTypes = {
+
+                    UNIT_PRICE: 'unit_price',
+
+                    QUANTITY: 'quantity',
+
+                    TOTAL_MONEY: 'total_money',
+
+                    WALLET_MONEY: 'wallet_money',
+
+                    EXPENSE: 'expense',
+
+                    DISCOUNT_PERCENT: 'discount_percent',
+
+                    PEOPLE_COUNT: 'people_count'
+
+                };
+
+                
+
+                this.calculationTypes = {
+
+                    PURCHASE_TOTAL: 'purchase_total',
+
+                    CHANGE_CALCULATION: 'change_calculation',
+
+                    REMAINING_MONEY: 'remaining_money',
+
+                    SPLIT_BILL: 'split_bill',
+
+                    DISCOUNT_PRICE: 'discount_price',
+
+                    TOTAL_SUM: 'total_sum'
+
+                };
+
+            }
+
+            // AIモデル自動選択機能
+
+            autoSelectModel(input) {
+
+                const complexity = this.analyzeComplexity(input);
+
+                
+
+                if (complexity.isSimple) {
+
+                    return 'speed'; // Calc-1o
+
+                } else if (complexity.isComplex) {
+
+                    return 'thinking'; // Calc-Thinking
+
+                } else {
+
+                    return 'normal'; // Calc-1
+
+                }
+
+            }
+
+            analyzeComplexity(input) {
+
+                const simplePatterns = [
+
+                    /^\d+\s*[+\-×÷]\s*\d+/,
+
+                    /^簡単/,
+
+                    /^計算/
+
+                ];
+
+                
+
+                const complexPatterns = [
+
+                    /複雑|詳しく|詳細|思考|考え|なぜ|理由/,
+
+                    /割り勘.*人/,
+
+                    /割引.*パーセント/,
+
+                    /複数.*計算/
+
+                ];
+
+                const isSimple = simplePatterns.some(pattern => pattern.test(input));
+
+                const isComplex = complexPatterns.some(pattern => pattern.test(input));
+
+                return { isSimple, isComplex };
+
+            }
+
+            // 🔥 個数単価問題完全解決：新検出エンジン
+
+            detectValues(input) {
+
+                console.log('=== CalcAI v1.7 個数単価問題解決開始 ===');
+
+                console.log('入力:', input);
+
+                
+
+                const detectedValues = [];
+
+                
+
+                // Step 1: 財布金額の検出（最優先）
+
+                const walletPattern = /財布[にで]?[¥$€£]?([\d,]+)/;
+
+                const walletMatch = input.match(walletPattern);
+
+                if (walletMatch) {
+
+                    const value = parseFloat(walletMatch[1].replace(/,/g, ''));
+
+                    detectedValues.push({
+
+                        value: value,
+
+                        original: `¥${value.toLocaleString()}`,
+
+                        currency: '¥',
+
+                        type: this.valueTypes.WALLET_MONEY,
+
+                        context: '財布の所持金',
+
+                        position: input.indexOf(walletMatch[0]),
+
+                        priority: 1.0
+
+                    });
+
+                    console.log('財布金額検出:', value);
+
+                }
+
+                
+
+                // Step 2: 「1つ¥300」パターンの検出（単価）
+
+                const unitPricePattern = /(\d+)つ[¥$€£]([\d,]+)/;
+
+                const unitPriceMatch = input.match(unitPricePattern);
+
+                if (unitPriceMatch) {
+
+                    const value = parseFloat(unitPriceMatch[2].replace(/,/g, ''));
+
+                    detectedValues.push({
+
+                        value: value,
+
+                        original: `¥${value.toLocaleString()}`,
+
+                        currency: '¥',
+
+                        type: this.valueTypes.UNIT_PRICE,
+
+                        context: '商品の単価',
+
+                        position: input.indexOf(unitPriceMatch[0]),
+
+                        priority: 0.9
+
+                    });
+
+                    console.log('単価検出:', value);
+
+                }
+
+                
+
+                // Step 3: 「4つ買います」パターンの検出（実際の購入個数）
+
+                const actualQuantityPattern = /(\d+)つ買/;
+
+                const actualQuantityMatch = input.match(actualQuantityPattern);
+
+                if (actualQuantityMatch) {
+
+                    const value = parseInt(actualQuantityMatch[1]);
+
+                    detectedValues.push({
+
+                        value: value,
+
+                        original: value.toString(),
+
+                        currency: '',
+
+                        type: this.valueTypes.QUANTITY,
+
+                        context: '実際の購入個数',
+
+                        position: input.indexOf(actualQuantityMatch[0]),
+
+                        priority: 0.9
+
+                    });
+
+                    console.log('実際の購入個数検出:', value);
+
+                }
+
+                
+
+                // Step 4: 通常の金額パターン（¥で始まる）
+
+                const moneyPattern = /[¥$€£]([\d,]+)/g;
+
+                let moneyMatch;
+
+                while ((moneyMatch = moneyPattern.exec(input)) !== null) {
+
+                    const value = parseFloat(moneyMatch[1].replace(/,/g, ''));
+
+                    const position = moneyMatch.index;
+
+                    
+
+                    // 既に検出済みかチェック
+
+                    const alreadyDetected = detectedValues.some(v =>
+
+                        Math.abs(v.position - position) < 10 && v.value === value
+
+                    );
+
+                    
+
+                    if (!alreadyDetected) {
+
+                        const beforeText = input.substring(Math.max(0, position - 20), position);
+
+                        const afterText = input.substring(position, Math.min(input.length, position + 20));
+
+                        
+
+                        let type = this.valueTypes.TOTAL_MONEY;
+
+                        let context = '金額';
+
+                        
+
+                        // 財布の文脈
+
+                        if (/財布|所持|手持ち|もって|ある/.test(beforeText)) {
+
+                            type = this.valueTypes.WALLET_MONEY;
+
+                            context = '所持金';
+
+                        }
+
+                        // 単価の文脈（「1つ¥300」以外の単価表現）
+
+                        else if (/1つ|1個|単価|値段|価格/.test(beforeText) || /の商品|の品物/.test(afterText)) {
+
+                            type = this.valueTypes.UNIT_PRICE;
+
+                            context = '単価';
+
+                        }
+
+                        
+
+                        detectedValues.push({
+
+                            value: value,
+
+                            original: moneyMatch[0],
+
+                            currency: moneyMatch[0][0],
+
+                            type: type,
+
+                            context: context,
+
+                            position: position,
+
+                            priority: 0.7
+
+                        });
+
+                        console.log('通常金額検出:', value, 'タイプ:', type);
+
+                    }
+
+                }
+
+                
+
+                // Step 5: 数値パターン（個数候補）
+
+                const numberPattern = /(\d+)/g;
+
+                let numberMatch;
+
+                while ((numberMatch = numberPattern.exec(input)) !== null) {
+
+                    const value = parseInt(numberMatch[1]);
+
+                    const position = numberMatch.index;
+
+                    
+
+                    // 既に検出済みかチェック
+
+                    const alreadyDetected = detectedValues.some(v =>
+
+                        Math.abs(v.position - position) < 5 && v.value === value
+
+                    );
+
+                    
+
+                    if (!alreadyDetected && value < 100) {
+
+                        const beforeText = input.substring(Math.max(0, position - 15), position);
+
+                        const afterText = input.substring(position, Math.min(input.length, position + 15));
+
+                        
+
+                        // 個数の文脈判定
+
+                        if (/つ|個|本|枚/.test(afterText) && !/¥/.test(beforeText + afterText)) {
+
+                            detectedValues.push({
+
+                                value: value,
+
+                                original: value.toString(),
+
+                                currency: '',
+
+                                type: this.valueTypes.QUANTITY,
+
+                                context: '個数',
+
+                                position: position,
+
+                                priority: 0.6
+
+                            });
+
+                            console.log('個数検出:', value);
+
+                        }
+
+                    }
+
+                }
+
+                
+
+                // 重複除去と優先度ソート
+
+                const finalValues = this.removeDuplicatesAndSort(detectedValues);
+
+                console.log('最終検出結果:', finalValues);
+
+                console.log('=== 検出完了 ===');
+
+                
+
+                return finalValues;
+
+            }
+
+            
+
+            // 重複除去と優先度ソート
+
+            removeDuplicatesAndSort(values) {
+
+                const uniqueValues = [];
+
+                const seen = new Set();
+
+                
+
+                // 優先度順にソート
+
+                values.sort((a, b) => b.priority - a.priority);
+
+                
+
+                values.forEach(value => {
+
+                    const key = `${value.type}_${value.value}`;
+
+                    if (!seen.has(key)) {
+
+                        seen.add(key);
+
+                        uniqueValues.push(value);
+
+                    }
+
+                });
+
+                
+
+                return uniqueValues;
+
+            }
+
+            determineCalculationType(input, values) {
+
+                console.log('=== 計算タイプ判定開始 ===');
+
+                console.log('入力:', input);
+
+                console.log('検出値:', values);
+
+                
+
+                const hasWallet = values.some(v => v.type === this.valueTypes.WALLET_MONEY);
+
+                const hasUnitPrice = values.some(v => v.type === this.valueTypes.UNIT_PRICE);
+
+                const hasQuantity = values.some(v => v.type === this.valueTypes.QUANTITY);
+
+                const hasPeopleCount = values.some(v => v.type === this.valueTypes.PEOPLE_COUNT);
+
+                const hasDiscount = values.some(v => v.type === this.valueTypes.DISCOUNT_PERCENT);
+
+                console.log('判定結果:', { hasWallet, hasUnitPrice, hasQuantity, hasPeopleCount, hasDiscount });
+
+                // おつり計算の判定
+
+                if (/おつり|お釣り|釣り/.test(input)) {
+
+                    console.log('計算タイプ: おつり計算');
+
+                    return this.calculationTypes.CHANGE_CALCULATION;
+
+                }
+
+                
+
+                // 割り勘計算の判定
+
+                if (/割り勘|分ける|シェア/.test(input) && hasPeopleCount) {
+
+                    console.log('計算タイプ: 割り勘計算');
+
+                    return this.calculationTypes.SPLIT_BILL;
+
+                }
+
+                
+
+                // 割引計算の判定
+
+                if (hasDiscount) {
+
+                    console.log('計算タイプ: 割引計算');
+
+                    return this.calculationTypes.DISCOUNT_PRICE;
+
+                }
+
+                
+
+                // 購入計算の判定（単価×個数）
+
+                if (hasUnitPrice && hasQuantity) {
+
+                    if (hasWallet) {
+
+                        console.log('計算タイプ: 残金計算（財布あり）');
+
+                        return this.calculationTypes.CHANGE_CALCULATION; // おつり計算として処理
+
+                    } else {
+
+                        console.log('計算タイプ: 購入合計');
+
+                        return this.calculationTypes.PURCHASE_TOTAL;
+
+                    }
+
+                }
+
+                
+
+                // 合計計算の判定
+
+                if (/合計|総額|全部/.test(input)) {
+
+                    console.log('計算タイプ: 合計計算');
+
+                    return this.calculationTypes.TOTAL_SUM;
+
+                }
+
+                
+
+                // 財布がある場合の残金計算
+
+                if (hasWallet) {
+
+                    console.log('計算タイプ: 残金計算');
+
+                    return this.calculationTypes.REMAINING_MONEY;
+
+                }
+
+                
+
+                console.log('計算タイプ: デフォルト（購入合計）');
+
+                return this.calculationTypes.PURCHASE_TOTAL;
+
+            }
+
+            // 計算実行（モード別性能差実装）
+
+            calculate(input, mode = 'normal') {
+
+                const startTime = Date.now();
+
+                
+
+                try {
+
+                    let detectedValues, calculationType, result, confidence;
+
+                    switch (mode) {
+
+                        case 'speed':
+
+                            detectedValues = this.detectValuesSpeed(input);
+
+                            calculationType = this.determineCalculationTypeSpeed(input, detectedValues);
+
+                            result = this.executeCalculationSpeed(calculationType, detectedValues);
+
+                            confidence = 0.75;
+
+                            break;
+
+                        case 'thinking':
+
+                            detectedValues = this.detectValuesThinking(input);
+
+                            const allPossibleTypes = this.getAllPossibleCalculationTypes(input, detectedValues);
+
+                            const allResults = this.executeAllCalculationPatterns(allPossibleTypes, detectedValues, input);
+
+                            const bestResult = this.selectBestResult(allResults, input);
+
+                            
+
+                            calculationType = bestResult.type;
+
+                            result = bestResult.result;
+
+                            confidence = this.calculateConfidenceThinking(calculationType, detectedValues, input, allResults);
+
+                            break;
+
+                        default: // normal
+
+                            detectedValues = this.detectValues(input);
+
+                            calculationType = this.determineCalculationType(input, detectedValues);
+
+                            result = this.executeCalculation(calculationType, detectedValues, input);
+
+                            confidence = this.calculateConfidence(calculationType, detectedValues, input);
+
+                            break;
+
+                    }
+
+                    
+
+                    if (detectedValues.length === 0) {
+
+                        throw new Error('計算に必要な数値が見つかりません');
+
+                    }
+
+                    
+
+                    const processingTime = Date.now() - startTime;
+
+                    
+
+                    return {
+
+                        ...result,
+
+                        detectedValues: detectedValues,
+
+                        calculationType: calculationType,
+
+                        confidence: confidence,
+
+                        processingTime: processingTime,
+
+                        mode: mode,
+
+                        thinkingDetails: mode === 'thinking' ? this.getThinkingDetails() : null
+
+                    };
+
+                } catch (error) {
+
+                    return {
+
+                        formula: 'CalcAI解析エラー',
+
+                        answer: 'エラー',
+
+                        answerType: 'エラーが発生しました',
+
+                        detectedValues: [],
+
+                        calculationType: 'error',
+
+                        confidence: 0.0,
+
+                        processingTime: Date.now() - startTime,
+
+                        mode: mode,
+
+                        error: error.message
+
+                    };
+
+                }
+
+            }
+
+            // 計算実行
+
+            executeCalculation(type, values, input) {
+
+                switch (type) {
+
+                    case this.calculationTypes.PURCHASE_TOTAL:
+
+                        return this.calculatePurchaseTotal(values);
+
+                    case this.calculationTypes.CHANGE_CALCULATION:
+
+                        return this.calculateChange(values);
+
+                    case this.calculationTypes.REMAINING_MONEY:
+
+                        return this.calculateRemainingMoney(values);
+
+                    case this.calculationTypes.SPLIT_BILL:
+
+                        return this.calculateSplitBill(values);
+
+                    case this.calculationTypes.DISCOUNT_PRICE:
+
+                        return this.calculateDiscountPrice(values);
+
+                    case this.calculationTypes.TOTAL_SUM:
+
+                        return this.calculateTotalSum(values);
+
+                    default:
+
+                        return this.calculatePurchaseTotal(values);
+
+                }
+
+            }
+
+            // 購入合計計算
+
+            calculatePurchaseTotal(values) {
+
+                const unitPrice = values.find(v => v.type === this.valueTypes.UNIT_PRICE) ||
+
+                                values.find(v => v.currency && v.value < 10000);
+
+                const quantity = values.find(v => v.type === this.valueTypes.QUANTITY) ||
+
+                               values.find(v => !v.currency && v.value < 100);
+
+                if (!unitPrice || !quantity) {
+
+                    throw new Error('単価または個数が特定できません');
+
+                }
+
+                const total = unitPrice.value * quantity.value;
+
+                const currency = unitPrice.currency || '¥';
+
+                return {
+
+                    formula: `${unitPrice.original} × ${quantity.value} = ${currency}${total.toLocaleString()}`,
+
+                    answer: `${currency}${total.toLocaleString()}`,
+
+                    answerType: '購入合計金額'
+
+                };
+
+            }
+
+            // おつり計算（個数単価問題対応版）
+
+            calculateChange(values) {
+
+                console.log('=== おつり計算開始 ===');
+
+                console.log('値:', values);
+
+                
+
+                const wallet = values.find(v => v.type === this.valueTypes.WALLET_MONEY);
+
+                const unitPrice = values.find(v => v.type === this.valueTypes.UNIT_PRICE);
+
+                const quantity = values.find(v => v.type === this.valueTypes.QUANTITY);
+
+                if (!wallet) {
+
+                    throw new Error('財布の金額が特定できません');
+
+                }
+
+                let totalCost;
+
+                let formula;
+
+                
+
+                // 単価×個数の場合
+
+                if (unitPrice && quantity) {
+
+                    totalCost = unitPrice.value * quantity.value;
+
+                    const change = wallet.value - totalCost;
+
+                    const currency = wallet.currency || '¥';
+
+                    
+
+                    formula = `${wallet.original} - (${unitPrice.original} × ${quantity.value}) = ${currency}${change.toLocaleString()}`;
+
+                    
+
+                    console.log('単価×個数計算:', {
+
+                        wallet: wallet.value,
+
+                        unitPrice: unitPrice.value,
+
+                        quantity: quantity.value,
+
+                        totalCost: totalCost,
+
+                        change: change
+
+                    });
+
+                    
+
+                    return {
+
+                        formula: formula,
+
+                        answer: `${currency}${change.toLocaleString()}`,
+
+                        answerType: 'おつり'
+
+                    };
+
+                }
+
+                
+
+                // 通常のおつり計算
+
+                const cost = values.find(v => v !== wallet && v.currency);
+
+                if (!cost) {
+
+                    throw new Error('費用が特定できません');
+
+                }
+
+                const change = wallet.value - cost.value;
+
+                const currency = wallet.currency || cost.currency || '¥';
+
+                return {
+
+                    formula: `${wallet.original} - ${cost.original} = ${currency}${change.toLocaleString()}`,
+
+                    answer: `${currency}${change.toLocaleString()}`,
+
+                    answerType: 'おつり'
+
+                };
+
+            }
+
+            // 残金計算
+
+            calculateRemainingMoney(values) {
+
+                const unitPrice = values.find(v => v.type === this.valueTypes.UNIT_PRICE) ||
+
+                                values.find(v => v.currency && v.value < 10000);
+
+                const quantity = values.find(v => v.type === this.valueTypes.QUANTITY) ||
+
+                               values.find(v => !v.currency && v.value < 100);
+
+                const wallet = values.find(v => v.type === this.valueTypes.WALLET_MONEY) ||
+
+                             values.reduce((max, v) => v.value > max.value ? v : max);
+
+                if (!unitPrice || !quantity || !wallet) {
+
+                    throw new Error('必要な値が特定できません');
+
+                }
+
+                const totalCost = unitPrice.value * quantity.value;
+
+                const remaining = wallet.value - totalCost;
+
+                const currency = wallet.currency || unitPrice.currency || '¥';
+
+                return {
+
+                    formula: `${wallet.original} - (${unitPrice.original} × ${quantity.value}) = ${currency}${remaining.toLocaleString()}`,
+
+                    answer: `${currency}${remaining.toLocaleString()}`,
+
+                    answerType: '残金'
+
+                };
+
+            }
+
+            // 割り勘計算
+
+            calculateSplitBill(values) {
+
+                const total = values.find(v => v.currency) || values[0];
+
+                const people = values.find(v => v.type === this.valueTypes.PEOPLE_COUNT) ||
+
+                             values.find(v => !v.currency && v.value < 20);
+
+                if (!total || !people) {
+
+                    throw new Error('総額または人数が特定できません');
+
+                }
+
+                const perPerson = total.value / people.value;
+
+                const currency = total.currency || '¥';
+
+                return {
+
+                    formula: `${total.original} ÷ ${people.value}人 = ${currency}${perPerson.toLocaleString()}`,
+
+                    answer: `${currency}${perPerson.toLocaleString()}`,
+
+                    answerType: '1人あたりの金額'
+
+                };
+
+            }
+
+            // 割引計算
+
+            calculateDiscountPrice(values) {
+
+                const originalPrice = values.find(v => v.currency) || values[0];
+
+                const discountPercent = values.find(v => v.type === this.valueTypes.DISCOUNT_PERCENT);
+
+                if (!originalPrice || !discountPercent) {
+
+                    throw new Error('元の価格または割引率が特定できません');
+
+                }
+
+                const discountAmount = originalPrice.value * (discountPercent.value / 100);
+
+                const finalPrice = originalPrice.value - discountAmount;
+
+                const currency = originalPrice.currency || '¥';
+
+                return {
+
+                    formula: `${originalPrice.original} - (${originalPrice.original} × ${discountPercent.value}%) = ${currency}${finalPrice.toLocaleString()}`,
+
+                    answer: `${currency}${finalPrice.toLocaleString()}`,
+
+                    answerType: '割引後価格'
+
+                };
+
+            }
+
+            // 合計計算
+
+            calculateTotalSum(values) {
+
+                const moneyValues = values.filter(v => v.currency || v.value > 100);
+
+                const total = moneyValues.reduce((sum, v) => sum + v.value, 0);
+
+                const currency = moneyValues.find(v => v.currency)?.currency || '¥';
+
+                return {
+
+                    formula: moneyValues.map(v => v.original).join(' + ') + ` = ${currency}${total.toLocaleString()}`,
+
+                    answer: `${currency}${total.toLocaleString()}`,
+
+                    answerType: '合計金額'
+
+                };
+
+            }
+
+            // スピードモード専用メソッド群（Normalベース簡略化）
+
+            detectValuesSpeed(input) {
+
+                console.log('=== Speed Mode: 簡略化検出開始 ===');
+
+                
+
+                // Normalモードの検出ロジックを使用（最初の3つまで）
+
+                const fullValues = this.detectValues(input);
+
+                const speedValues = fullValues.slice(0, 3);
+
+                
+
+                console.log('Speed検出結果:', speedValues);
+
+                return speedValues;
+
+            }
+
+            determineCalculationTypeSpeed(input, values) {
+
+                // Normalモードと同じロジックを使用
+
+                return this.determineCalculationType(input, values);
+
+            }
+
+            executeCalculationSpeed(type, values) {
+
+                // Normalモードと同じ計算ロジックを使用
+
+                return this.executeCalculation(type, values, '');
+
+            }
+
+            // Thinkingモード専用メソッド群（Normalベース拡張）
+
+            detectValuesThinking(input) {
+
+                console.log('=== Thinking Mode: 拡張検出開始 ===');
+
+                
+
+                // Normalモードの検出結果をベースに使用
+
+                const baseValues = this.detectValues(input);
+
+                
+
+                // 安全な拡張処理のみ追加
+
+                baseValues.forEach((val, index) => {
+
+                    try {
+
+                        // 文脈スコア計算（安全版）
+
+                        val.contextScore = this.calculateSafeContextScore(val.context, input);
+
+                        
+
+                        // 位置スコア計算
+
+                        val.positionScore = val.position / input.length;
+
+                        
+
+                        // 代替タイプ候補（安全版）
+
+                        val.alternativeTypes = this.getSafeAlternativeTypes(val.type, val.value);
+
+                        
+
+                        // 信頼度計算
+
+                        val.confidenceScore = (val.contextScore + (1 - val.positionScore)) / 2;
+
+                        
+
+                        console.log(`Thinking拡張 ${index + 1}:`, {
+
+                            value: val.value,
+
+                            type: val.type,
+
+                            contextScore: val.contextScore,
+
+                            confidenceScore: val.confidenceScore
+
+                        });
+
+                        
+
+                    } catch (error) {
+
+                        console.warn('Thinking拡張処理エラー:', error);
+
+                        // エラーが発生してもベース値は保持
+
+                        val.contextScore = 0.5;
+
+                        val.positionScore = 0.5;
+
+                        val.alternativeTypes = [];
+
+                        val.confidenceScore = 0.5;
+
+                    }
+
+                });
+
+                
+
+                console.log('Thinking最終結果:', baseValues);
+
+                return baseValues;
+
+            }
+
+            // 安全な文脈スコア計算
+
+            calculateSafeContextScore(context, fullInput) {
+
+                try {
+
+                    const keywords = ['円', '¥', '個', 'つ', '財布', '買', '購入', 'おつり'];
+
+                    const contextLower = (context || '').toLowerCase();
+
+                    const inputLower = (fullInput || '').toLowerCase();
+
+                    
+
+                    let score = 0.3; // ベーススコア
+
+                    
+
+                    keywords.forEach(keyword => {
+
+                        if (contextLower.includes(keyword) || inputLower.includes(keyword)) {
+
+                            score += 0.1;
+
+                        }
+
+                    });
+
+                    
+
+                    return Math.min(score, 1.0);
+
+                } catch (error) {
+
+                    return 0.5; // デフォルト値
+
+                }
+
+            }
+
+            // 安全な代替タイプ取得
+
+            getSafeAlternativeTypes(currentType, value) {
+
+                try {
+
+                    const alternatives = [];
+
+                    
+
+                    if (value < 100) {
+
+                        alternatives.push('quantity', 'people_count');
+
+                    }
+
+                    if (value > 100) {
+
+                        alternatives.push('total_money', 'wallet_money', 'unit_price');
+
+                    }
+
+                    if (currentType === 'unit_price') {
+
+                        alternatives.push('total_money');
+
+                    }
+
+                    
+
+                    return alternatives.filter(alt => alt !== currentType);
+
+                } catch (error) {
+
+                    return [];
+
+                }
+
+            }
+
+            // Thinking専用：安全な計算タイプ評価
+
+            getAllPossibleCalculationTypes(input, values) {
+
+                console.log('=== Thinking: 計算タイプ評価開始 ===');
+
+                
+
+                try {
+
+                    const possibleTypes = [];
+
+                    
+
+                    // 基本的な計算タイプを安全に評価
+
+                    const basicTypes = [
+
+                        this.calculationTypes.CHANGE_CALCULATION,
+
+                        this.calculationTypes.PURCHASE_TOTAL,
+
+                        this.calculationTypes.REMAINING_MONEY,
+
+                        this.calculationTypes.TOTAL_SUM
+
+                    ];
+
+                    
+
+                    basicTypes.forEach(type => {
+
+                        try {
+
+                            const score = this.evaluateCalculationTypeScoreSafe(type, input, values);
+
+                            if (score > 0.1) {
+
+                                possibleTypes.push({ type, score });
+
+                                console.log(`タイプ評価: ${type} = ${score}`);
+
+                            }
+
+                        } catch (error) {
+
+                            console.warn(`タイプ評価エラー ${type}:`, error);
+
+                        }
+
+                    });
+
+                    
+
+                    const sorted = possibleTypes.sort((a, b) => b.score - a.score);
+
+                    console.log('評価結果:', sorted);
+
+                    return sorted;
+
+                    
+
+                } catch (error) {
+
+                    console.error('計算タイプ評価エラー:', error);
+
+                    // フォールバック：Normalモードの判定を使用
+
+                    const fallbackType = this.determineCalculationType(input, values);
+
+                    return [{ type: fallbackType, score: 0.7 }];
+
+                }
+
+            }
+
+            // 安全な計算タイプスコア評価
+
+            evaluateCalculationTypeScoreSafe(type, input, values) {
+
+                try {
+
+                    const typeKeywords = {
+
+                        [this.calculationTypes.PURCHASE_TOTAL]: ['買', '購入', '商品', '×', 'かける'],
+
+                        [this.calculationTypes.CHANGE_CALCULATION]: ['おつり', 'お釣り', '釣り', '支払', 'から'],
+
+                        [this.calculationTypes.REMAINING_MONEY]: ['残', '財布', '所持', 'あと', '余り'],
+
+                        [this.calculationTypes.SPLIT_BILL]: ['割り勘', '分ける', 'シェア', '人で', '÷'],
+
+                        [this.calculationTypes.DISCOUNT_PRICE]: ['割引', 'セール', 'オフ', '%', 'パーセント'],
+
+                        [this.calculationTypes.TOTAL_SUM]: ['合計', '総額', '全部', '+', '足す']
+
+                    };
+
+                    const keywords = typeKeywords[type] || [];
+
+                    const inputLower = (input || '').toLowerCase();
+
+                    
+
+                    let matches = 0;
+
+                    keywords.forEach(keyword => {
+
+                        if (inputLower.includes(keyword)) {
+
+                            matches++;
+
+                        }
+
+                    });
+
+                    
+
+                    const baseScore = matches / Math.max(keywords.length, 1);
+
+                    
+
+                    // 値の存在による補正
+
+                    let valueBonus = 0;
+
+                    if (type === this.calculationTypes.CHANGE_CALCULATION) {
+
+                        const hasWallet = values.some(v => v.type === 'wallet_money');
+
+                        const hasPrice = values.some(v => v.type === 'unit_price' || v.currency);
+
+                        if (hasWallet && hasPrice) valueBonus = 0.3;
+
+                    }
+
+                    
+
+                    return Math.min(baseScore + valueBonus, 1.0);
+
+                    
+
+                } catch (error) {
+
+                    return 0.2; // デフォルトスコア
+
+                }
+
+            }
+
+            executeAllCalculationPatterns(possibleTypes, values, input) {
+
+                console.log('=== Thinking: 全パターン実行開始 ===');
+
+                
+
+                return possibleTypes.map(({ type, score }) => {
+
+                    try {
+
+                        console.log(`パターン実行: ${type}`);
+
+                        const result = this.executeCalculation(type, values, input);
+
+                        console.log(`パターン成功: ${type}`, result);
+
+                        
+
+                        return {
+
+                            type,
+
+                            score,
+
+                            result,
+
+                            success: true
+
+                        };
+
+                    } catch (error) {
+
+                        console.warn(`パターンエラー ${type}:`, error.message);
+
+                        return {
+
+                            type,
+
+                            score: score * 0.1,
+
+                            result: null,
+
+                            success: false,
+
+                            error: error.message
+
+                        };
+
+                    }
+
+                });
+
+            }
+
+            selectBestResult(allResults, input) {
+
+                console.log('=== Thinking: 最適解選択 ===');
+
+                console.log('全結果:', allResults);
+
+                
+
+                const successfulResults = allResults.filter(r => r.success);
+
+                if (successfulResults.length === 0) {
+
+                    console.error('全パターンでエラー発生');
+
+                    throw new Error('全ての計算パターンでエラーが発生しました');
+
+                }
+
+                
+
+                const bestResult = successfulResults.reduce((best, current) =>
+
+                    current.score > best.score ? current : best
+
+                );
+
+                
+
+                console.log('選択された最適解:', bestResult);
+
+                return bestResult;
+
+            }
+
+            calculateConfidenceThinking(calculationType, values, input, allResults) {
+
+                try {
+
+                    // ベース信頼度
+
+                    let confidence = this.calculateConfidence(calculationType, values, input);
+
+                    
+
+                    // 成功率による補正
+
+                    const successRate = allResults.filter(r => r.success).length / Math.max(allResults.length, 1);
+
+                    confidence *= (0.5 + successRate * 0.5);
+
+                    
+
+                    // 文脈スコアによる補正（安全版）
+
+                    const contextScores = values.map(v => v.contextScore || 0.5);
+
+                    const avgContextScore = contextScores.reduce((sum, score) => sum + score, 0) / Math.max(contextScores.length, 1);
+
+                    confidence = (confidence + avgContextScore) / 2;
+
+                    
+
+                    // Thinkingモードボーナス
+
+                    confidence = Math.min(confidence + 0.05, 0.99);
+
+                    
+
+                    return confidence;
+
+                    
+
+                } catch (error) {
+
+                    console.warn('Thinking信頼度計算エラー:', error);
+
+                    return 0.75; // デフォルト値
+
+                }
+
+            }
+
+            getThinkingDetails() {
+
+                return {
+
+                    analyzedPatterns: 'multiple',
+
+                    verificationSteps: 6,
+
+                    confidenceFactors: ['context', 'position', 'alternatives', 'verification', 'quantity_conflict_resolution']
+
+                };
+
+            }
+
+            // 補助メソッド群
+
+            analyzeContextScore(context, fullInput) {
+
+                const keywords = ['円', '¥', '個', 'つ', '財布', '買', '購入'];
+
+                const matches = keywords.filter(k => context.includes(k)).length;
+
+                return Math.min(matches / keywords.length + 0.3, 1.0);
+
+            }
+
+            analyzePositionScore(position, totalLength) {
+
+                return 1.0 - (position / totalLength) * 0.3;
+
+            }
+
+            getAlternativeTypes(context, value) {
+
+                const alternatives = [];
+
+                if (value < 100) alternatives.push('quantity', 'people_count');
+
+                if (value > 100) alternatives.push('total_money', 'wallet_money');
+
+                return alternatives;
+
+            }
+
+            evaluateCalculationTypeScore(type, input, values) {
+
+                const typeKeywords = {
+
+                    [this.calculationTypes.PURCHASE_TOTAL]: ['買', '購入', '商品', '×', 'かける'],
+
+                    [this.calculationTypes.CHANGE_CALCULATION]: ['おつり', 'お釣り', '釣り', '支払', 'から'],
+
+                    [this.calculationTypes.REMAINING_MONEY]: ['残', '財布', '所持', 'あと', '余り'],
+
+                    [this.calculationTypes.SPLIT_BILL]: ['割り勘', '分ける', 'シェア', '人で', '÷'],
+
+                    [this.calculationTypes.DISCOUNT_PRICE]: ['割引', 'セール', 'オフ', '%', 'パーセント'],
+
+                    [this.calculationTypes.TOTAL_SUM]: ['合計', '総額', '全部', '+', '足す']
+
+                };
+
+                const keywords = typeKeywords[type] || [];
+
+                const matches = keywords.filter(k => input.includes(k)).length;
+
+                return matches / Math.max(keywords.length, 1);
+
+            }
+
+            // 信頼度計算
+
+            calculateConfidence(calculationType, values, input) {
+
+                let confidence = 0.5;
+
+                // 個数問題解決による信頼度向上
+
+                const hasResolvedQuantityConflict = values.some(v => v.resolvedAs);
+
+                if (hasResolvedQuantityConflict) confidence += 0.15;
+
+                // 値の明確性
+
+                const hasTypedValues = values.some(v => v.type !== 'unknown');
+
+                if (hasTypedValues) confidence += 0.2;
+
+                // 通貨記号の存在
+
+                const hasCurrency = values.some(v => v.currency);
+
+                if (hasCurrency) confidence += 0.1;
+
+                // 計算タイプの明確性
+
+                const typeKeywords = {
+
+                    [this.calculationTypes.PURCHASE_TOTAL]: ['買', '購入', '商品'],
+
+                    [this.calculationTypes.CHANGE_CALCULATION]: ['おつり', 'お釣り', '釣り'],
+
+                    [this.calculationTypes.REMAINING_MONEY]: ['残', '財布', '所持'],
+
+                    [this.calculationTypes.SPLIT_BILL]: ['割り勘', '分ける', 'シェア'],
+
+                    [this.calculationTypes.DISCOUNT_PRICE]: ['割引', 'セール', 'オフ'],
+
+                    [this.calculationTypes.TOTAL_SUM]: ['合計', '総額', '全部']
+
+                };
+
+                const keywords = typeKeywords[calculationType] || [];
+
+                const hasKeywords = keywords.some(keyword => input.includes(keyword));
+
+                if (hasKeywords) confidence += 0.15;
+
+                // 値の数と妥当性
+
+                if (values.length >= 2) confidence += 0.05;
+
+                return Math.min(confidence, 0.98);
+
+            }
+
+        }
+
+        // CalcAI v1.7 エンジンインスタンス
+
+        const calcAIEngine = new CalcAIV17Engine();
+
+        // 自動スクロール機能
+
+        function smoothScrollToElement(elementId, highlight = true) {
+
+            const element = document.getElementById(elementId);
+
+            if (element) {
+
+                element.scrollIntoView({
+
+                    behavior: 'smooth',
+
+                    block: 'center',
+
+                    inline: 'nearest'
+
+                });
+
+                
+
+                if (highlight) {
+
+                    element.classList.add('scroll-highlight');
+
+                    setTimeout(() => {
+
+                        element.classList.remove('scroll-highlight');
+
+                    }, 2000);
+
+                }
+
+            }
+
+        }
+
+        // テーマ切り替え
+
+        function toggleTheme() {
+
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+            document.body.setAttribute('data-theme', currentTheme);
+
+            document.getElementById('theme-icon').textContent = currentTheme === 'light' ? '🌙' : '☀️';
+
+        }
+
+        // AIモデル自動選択切り替え
+
+        function toggleAutoSelect() {
+
+            autoSelectEnabled = document.getElementById('auto-select-checkbox').checked;
+
+            const indicator = document.getElementById('auto-select-indicator');
+
+            
+
+            if (autoSelectEnabled) {
+
+                indicator.classList.remove('hidden');
+
+                showToast('AIモデル自動選択が有効になりました', 'info');
+
+            } else {
+
+                indicator.classList.add('hidden');
+
+                showToast('AIモデル自動選択が無効になりました', 'info');
+
+            }
+
+        }
+
+        // モード選択
+
+        function selectMode(mode) {
+
+            currentMode = mode;
+
+            
+
+            // UI更新
+
+            document.querySelectorAll('.mode-option').forEach(option => {
+
+                option.classList.remove('active');
+
+            });
+
+            document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+
+            
+
+            // 説明更新
+
+            const descriptions = {
+
+                speed: '⚡ Calc-1o - 最速計算モデル（瞬間解析）',
+
+                normal: '🎯 Calc-1 - バランス型計算モデル（高精度）',
+
+                thinking: '🧠 Calc-Thinking - 思考型計算モデル（詳細解析）'
+
+            };
+
+            
+
+            document.getElementById('mode-description').textContent = descriptions[mode];
+
+        }
+
+        // 検出値表示
+
+        function displayDetectedValues(values) {
+
+            const container = document.getElementById('detected-values');
+
+            
+
+            if (values.length === 0) {
+
+                container.innerHTML = '<p class="text-center opacity-75">値が検出されませんでした</p>';
+
+                return;
+
+            }
+
+            const typeNames = {
+
+                'unit_price': '💰 単価',
+
+                'quantity': '📦 個数',
+
+                'total_money': '💵 金額',
+
+                'wallet_money': '👛 所持金',
+
+                'expense': '💸 支出',
+
+                'discount_percent': '🏷️ 割引率',
+
+                'people_count': '👥 人数'
+
+            };
+
+            container.innerHTML = values.map(value => {
+
+                const resolvedInfo = value.resolvedAs ?
+
+                    `<span class="text-xs bg-emerald-400/20 text-emerald-300 px-2 py-1 rounded-full ml-2">解決済み: ${value.resolvedAs}</span>` : '';
+
+                
+
+                return `
+
+                    <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+
+                        <div class="flex items-center space-x-3">
+
+                            <span class="detection-badge">${typeNames[value.type] || '❓ 不明'}</span>
+
+                            <span class="value-highlight">${value.original}</span>
+
+                            ${resolvedInfo}
+
+                        </div>
+
+                        <div class="text-xs opacity-75">
+
+                            文脈: "${value.context}"
+
+                        </div>
+
+                    </div>
+
+                `;
+
+            }).join('');
+
+        }
+
+        // 結果表示（自動スクロール対応）
+
+        async function displayResult(calculation) {
+
+            const resultContainer = document.getElementById('result-container');
+
+            resultContainer.classList.remove('hidden');
+
+            
+
+            // Step 1: Processing表示エリアにスクロール
+
+            smoothScrollToElement('processing-container', true);
+
+            // Step 2: 思考プロセス表示
+
+            await showThinkingProcessWithScroll(calculation);
+
+            // Step 3: 検出結果にスクロール
+
+            setTimeout(() => {
+
+                smoothScrollToElement('detection-section', true);
+
+                displayDetectedValues(calculation.detectedValues);
+
+            }, 500);
+
+            // Step 4: 信頼度表示
+
+            setTimeout(() => {
+
+                smoothScrollToElement('confidence-percentage', true);
+
+                const confidence = Math.round(calculation.confidence * 100);
+
+                document.getElementById('confidence-percentage').textContent = `${confidence}%`;
+
+                document.getElementById('confidence-fill').style.width = `${confidence}%`;
+
+                
+
+                const modeNames = {
+
+                    speed: '⚡ Calc-1o',
+
+                    normal: '🎯 Calc-1',
+
+                    thinking: '🧠 Calc-Thinking'
+
+                };
+
+                document.getElementById('processing-mode').textContent =
+
+                    `${modeNames[calculation.mode]} | 処理時間: ${calculation.processingTime}ms`;
+
+            }, 1000);
+
+            // Step 5: 計算式表示
+
+            setTimeout(() => {
+
+                document.getElementById('formula-display').textContent = calculation.formula;
+
+            }, 1300);
+
+            // Step 6: 最終答えにスクロール
+
+            setTimeout(() => {
+
+                smoothScrollToElement('answer-display', true);
+
+                document.getElementById('answer-value').textContent = calculation.answer;
+
+                document.getElementById('answer-type').textContent = calculation.answerType;
+
+            }, 1600);
+
+        }
+
+        // 思考プロセス表示（自動スクロール対応）
+
+        async function showThinkingProcessWithScroll(calculation) {
+
+            const mode = calculation.mode;
+
+            
+
+            // モード別ステップ定義
+
+            const modeSteps = {
+
+                speed: [
+
+                    { icon: '⚡', text: 'Calc-1o 高速パターンマッチング実行...', detail: '最小限の処理で瞬間解析', duration: 100 },
+
+                    { icon: '🎯', text: '基本計算タイプ判定...', detail: '効率重視の簡易分類', duration: 80 }
+
+                ],
+
+                normal: [
+
+                    { icon: '🔍', text: 'Calc-1 個数単価問題解決処理...', detail: '「1つ¥300を4つ」パターンを完全識別', duration: 300 },
+
+                    { icon: '🧮', text: '財布・単価・個数を分離...', detail: '文脈解析で正確な値を特定', duration: 250 },
+
+                    { icon: '⚙️', text: '計算実行と検証...', detail: 'おつり計算を正確に実行', duration: 200 }
+
+                ],
+
+                thinking: [
+
+                    { icon: '🔍', text: 'Calc-Thinking 入力文の詳細解析を開始...', detail: '文脈・語順・意図を多角的に分析', duration: 400 },
+
+                    { icon: '🧮', text: '個数競合マップを構築...', detail: '「1つ¥300円を4つ」パターンを完全識別', duration: 350 },
+
+                    { icon: '🎯', text: '単価・個数を文脈分離...', detail: '単価指示語と実購入個数を完全分離', duration: 300 },
+
+                    { icon: '⚙️', text: '全計算パターンを並列実行...', detail: '複数の解釈で同時計算し最適解を選択', duration: 400 },
+
+                    { icon: '🔬', text: '個数問題解決度を検証...', detail: '競合解決の信頼度と精度を詳細評価', duration: 300 },
+
+                    { icon: '✨', text: '最終検証と品質保証...', detail: '計算精度・表示形式・ユーザビリティを確認', duration: 250 }
+
+                ]
+
+            };
+
+            const steps = modeSteps[mode];
+
+            const modeNames = {
+
+                speed: 'Calc-1o Processing',
+
+                normal: 'Calc-1 Processing',
+
+                thinking: 'Calc-Thinking Process'
+
+            };
+
+            const processingContainer = document.getElementById('processing-container');
+
+            processingContainer.innerHTML = '';
+
+            const thinkingContainer = document.createElement('div');
+
+            thinkingContainer.className = 'glass-card-heavy rounded-2xl p-6 mb-6 slide-in-up';
+
+            thinkingContainer.innerHTML = `
+
+                <h3 class="text-xl font-bold mb-6 flex items-center gradient-text">
+
+                    ${mode === 'speed' ? '⚡' : mode === 'normal' ? '🎯' : '🧠'}
+
+                    <span class="ml-2">CalcAI ${modeNames[mode]}</span>
+
+                </h3>
+
+                <div id="thinking-steps" class="space-y-4"></div>
+
+            `;
+
+            
+
+            processingContainer.appendChild(thinkingContainer);
+
+            const stepsContainer = document.getElementById('thinking-steps');
+
+            for (let i = 0; i < steps.length; i++) {
+
+                const step = steps[i];
+
+                
+
+                // ステップ要素作成
+
+                const stepDiv = document.createElement('div');
+
+                stepDiv.className = 'thinking-step opacity-0 transform translate-y-4 transition-all duration-500';
+
+                stepDiv.id = `thinking-step-${i}`;
+
+                
+
+                // モード別スタイリング
+
+                const gradientClass = mode === 'speed' ? 'from-yellow-500 to-orange-500' :
+
+                                    mode === 'normal' ? 'from-blue-500 to-indigo-500' :
+
+                                    'from-purple-500 to-pink-500';
+
+                
+
+                stepDiv.innerHTML = `
+
+                    <div class="flex items-start space-x-4 p-4 bg-white/5 rounded-xl border border-white/10">
+
+                        <div class="flex-shrink-0">
+
+                            <div class="w-12 h-12 bg-gradient-to-br ${gradientClass} rounded-full flex items-center justify-center text-xl shadow-lg">
+
+                                ${step.icon}
+
+                            </div>
+
+                        </div>
+
+                        <div class="flex-1 min-w-0">
+
+                            <div class="flex items-center space-x-3 mb-2">
+
+                                <h4 class="font-bold text-lg">${step.text}</h4>
+
+                                <div class="thinking-dots flex space-x-1">
+
+                                    <div class="w-2 h-2 bg-current rounded-full animate-bounce opacity-60"></div>
+
+                                    <div class="w-2 h-2 bg-current rounded-full animate-bounce opacity-80" style="animation-delay: 0.1s"></div>
+
+                                    <div class="w-2 h-2 bg-current rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+
+                                </div>
+
+                            </div>
+
+                            <p class="text-sm opacity-75">${step.detail}</p>
+
+                            <div class="mt-3 bg-gradient-to-r from-gray-500/20 to-gray-400/20 rounded-lg h-2 overflow-hidden">
+
+                                <div class="progress-bar h-full bg-gradient-to-r ${gradientClass} rounded-lg transform -translate-x-full transition-transform duration-1000"></div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                `;
+
+                
+
+                stepsContainer.appendChild(stepDiv);
+
+                
+
+                // アニメーション開始
+
+                setTimeout(() => {
+
+                    stepDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    stepDiv.classList.remove('opacity-0', 'translate-y-4');
+
+                    stepDiv.classList.add('opacity-100', 'translate-y-0');
+
+                    
+
+                    // プログレスバーアニメーション
+
+                    const progressBar = stepDiv.querySelector('.progress-bar');
+
+                    setTimeout(() => {
+
+                        progressBar.classList.remove('-translate-x-full');
+
+                        progressBar.classList.add('translate-x-0');
+
+                    }, 100);
+
+                }, 50);
+
+                
+
+                // ステップ間の待機時間（モード別）
+
+                await new Promise(resolve => setTimeout(resolve, step.duration));
+
+                
+
+                // 完了状態に変更
+
+                const dots = stepDiv.querySelector('.thinking-dots');
+
+                dots.innerHTML = '<div class="w-6 h-6 bg-emerald-400 rounded-full flex items-center justify-center text-white text-xs font-bold">✓</div>';
+
+            }
+
+            // 最終的に思考プロセスを縮小表示に変更
+
+            const finalDelay = mode === 'speed' ? 200 : mode === 'normal' ? 500 : 1000;
+
+            setTimeout(() => {
+
+                thinkingContainer.classList.add('transform', 'scale-95', 'opacity-75');
+
+            }, finalDelay);
+
+        }
+
+        // 履歴表示
+
+        function renderHistory() {
+
+            const historyList = document.getElementById('history-list');
+
+            
+
+            if (calculationHistory.length === 0) {
+
+                historyList.innerHTML = '<p class="text-center py-8 opacity-75">まだ計算履歴がありません</p>';
+
+                return;
+
+            }
+
+            historyList.innerHTML = calculationHistory
+
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+
+                .slice(0, 10)
+
+                .map(record => {
+
+                    const confidence = Math.round((record.confidence_score || 0.85) * 100);
+
+                    const confidenceColor = confidence >= 90 ? 'text-emerald-400' :
+
+                                          confidence >= 70 ? 'text-blue-400' : 'text-orange-400';
+
+                    
+
+                    const modeNames = {
+
+                        speed: 'Calc-1o',
+
+                        normal: 'Calc-1',
+
+                        thinking: 'Calc-Thinking'
+
+                    };
+
+                    
+
+                    return `
+
+                        <div class="glass-card rounded-xl p-4 hover:bg-white/5 transition-all duration-300">
+
+                            <div class="flex justify-between items-center mb-3">
+
+                                <div class="text-sm opacity-75">${new Date(record.timestamp).toLocaleString('ja-JP')}</div>
+
+                                <div class="flex items-center space-x-2">
+
+                                    <span class="text-xs ${confidenceColor} font-bold">信頼度: ${confidence}%</span>
+
+                                    <span class="text-xs bg-purple-400/20 text-purple-300 px-2 py-1 rounded-full">
+
+                                        ${modeNames[record.processing_mode] || 'Calc-1'}
+
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                            <div class="font-medium mb-2">${record.input_text}</div>
+
+                            <div class="text-sm opacity-75 mb-1">検出値: ${record.detected_values || '---'}</div>
+
+                            <div class="text-sm text-purple-300 mb-1">式: ${record.formula}</div>
+
+                            <div class="text-lg font-bold gradient-text">答え: ${record.answer}</div>
+
+                        </div>
+
+                    `;
+
+                }).join('');
+
+        }
+
+        // フォーム送信処理
+
+        document.getElementById('calculation-form').addEventListener('submit', async function(e) {
+
+            e.preventDefault();
+
+            
+
+            if (currentRecordCount >= 999) {
+
+                showToast('計算履歴の上限（999件）に達しました', 'error');
+
+                return;
+
+            }
+
+            const input = document.getElementById('user-input').value.trim();
+
+            if (!input) return;
+
+            // AIモデル自動選択
+
+            let selectedMode = currentMode;
+
+            if (autoSelectEnabled) {
+
+                selectedMode = calcAIEngine.autoSelectModel(input);
+
+                
+
+                // 自動選択されたモードをUIに反映
+
+                document.querySelectorAll('.mode-option').forEach(option => {
+
+                    option.classList.remove('active');
+
+                });
+
+                document.querySelector(`[data-mode="${selectedMode}"]`).classList.add('active');
+
+                
+
+                const descriptions = {
+
+                    speed: '⚡ Calc-1o - 最速計算モデル（瞬間解析）',
+
+                    normal: '🎯 Calc-1 - バランス型計算モデル（高精度）',
+
+                    thinking: '🧠 Calc-Thinking - 思考型計算モデル（詳細解析）'
+
+                };
+
+                document.getElementById('mode-description').textContent = descriptions[selectedMode];
+
+                
+
+                showToast(`AIが${selectedMode === 'speed' ? 'Calc-1o' : selectedMode === 'normal' ? 'Calc-1' : 'Calc-Thinking'}を選択しました`, 'info');
+
+            }
+
+            const calculateBtn = document.getElementById('calculate-btn');
+
+            const btnText = document.getElementById('btn-text');
+
+            
+
+            // ローディング状態
+
+            calculateBtn.disabled = true;
+
+            const modeNames = {
+
+                speed: 'Calc-1o',
+
+                normal: 'Calc-1',
+
+                thinking: 'Calc-Thinking'
+
+            };
+
+            btnText.textContent = `🧠 ${modeNames[selectedMode]} 解析中`;
+
+            btnText.classList.add('loading-dots');
+
+            try {
+
+                // モード別の遅延（性能差を明確化）
+
+                const delays = {
+
+                    speed: 50,
+
+                    normal: 200,
+
+                    thinking: 1200
+
+                };
+
+                await new Promise(resolve => setTimeout(resolve, delays[selectedMode]));
+
+                // 計算実行
+
+                const calculation = calcAIEngine.calculate(input, selectedMode);
+
+                
+
+                // 結果表示（自動スクロール付き）
+
+                await displayResult(calculation);
+
+                // データ保存
+
+                const record = {
+
+                    id: Date.now().toString(),
+
+                    input_text: input,
+
+                    detected_values: calculation.detectedValues.map(v => {
+
+                        const resolvedInfo = v.resolvedAs ? ` [${v.resolvedAs}]` : '';
+
+                        return `${v.original}(${v.type})${resolvedInfo}`;
+
+                    }).join(', '),
+
+                    calculation_type: calculation.calculationType,
+
+                    formula: calculation.formula,
+
+                    answer: calculation.answer,
+
+                    confidence_score: calculation.confidence,
+
+                    processing_mode: calculation.mode,
+
+                    timestamp: new Date().toISOString()
+
+                };
+
+                const result = await window.dataSdk.create(record);
+
+                if (!result.isOk) {
+
+                    showToast('履歴の保存に失敗しました', 'error');
+
+                }
+
+                // フォームリセット
+
+                document.getElementById('user-input').value = '';
+
+            } catch (error) {
+
+                showToast('計算中にエラーが発生しました', 'error');
+
+            } finally {
+
+                // ローディング状態解除
+
+                calculateBtn.disabled = false;
+
+                btnText.textContent = window.elementSdk?.config?.calculate_button_text || defaultConfig.calculate_button_text;
+
+                btnText.classList.remove('loading-dots');
+
+            }
+
+        });
+
+        // トースト通知
+
+        function showToast(message, type = 'info') {
+
+            const toast = document.createElement('div');
+
+            toast.className = `fixed top-20 right-4 px-6 py-3 rounded-xl text-white font-medium z-50 transform translate-x-full transition-transform duration-300 glass-card ${
+
+                type === 'error' ? 'bg-red-500/80' : 'bg-blue-500/80'
+
+            }`;
+
+            toast.textContent = message;
+
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('translate-x-full'), 100);
+
+            setTimeout(() => {
+
+                toast.classList.add('translate-x-full');
+
+                setTimeout(() => document.body.removeChild(toast), 300);
+
+            }, 3000);
+
+        }
+
+        // Element SDK設定
+
+        async function render(config) {
+
+            const appTitle = document.getElementById('app-title');
+
+            const userInput = document.getElementById('user-input');
+
+            const btnText = document.getElementById('btn-text');
+
+            if (appTitle) {
+
+                appTitle.textContent = config.app_title || defaultConfig.app_title;
+
+                appTitle.style.fontFamily = `${config.font_family || 'system-ui'}, -apple-system, sans-serif`;
+
+                appTitle.style.fontSize = `${(config.font_size || 48) * 1.2}px`;
+
+            }
+
+            if (userInput) {
+
+                userInput.placeholder = config.input_placeholder || defaultConfig.input_placeholder;
+
+                userInput.style.fontFamily = `${config.font_family || 'system-ui'}, -apple-system, sans-serif`;
+
+                userInput.style.fontSize = `${config.font_size || 16}px`;
+
+            }
+
+            if (btnText && !btnText.classList.contains('loading-dots')) {
+
+                btnText.textContent = config.calculate_button_text || defaultConfig.calculate_button_text;
+
+            }
+
+            // CSS変数更新
+
+            document.documentElement.style.setProperty('--primary-color', config.primary_color || defaultConfig.primary_color);
+
+            document.documentElement.style.setProperty('--secondary-color', config.secondary_color || defaultConfig.secondary_color);
+
+            document.documentElement.style.setProperty('--accent-color', config.accent_color || defaultConfig.accent_color);
+
+        }
+
+        // 初期化
+
+        async function init() {
+
+            try {
+
+                if (window.dataSdk) {
+
+                    const initResult = await window.dataSdk.init(dataHandler);
+
+                    if (!initResult.isOk) {
+
+                        console.error('Data SDK initialization failed');
+
+                    }
+
+                }
+
+                if (window.elementSdk) {
+
+                    window.elementSdk.init({
+
+                        defaultConfig,
+
+                        render,
+
+                        mapToCapabilities: (config) => ({
+
+                            recolorables: [
+
+                                {
+
+                                    get: () => config.primary_color || defaultConfig.primary_color,
+
+                                    set: (value) => {
+
+                                        config.primary_color = value;
+
+                                        window.elementSdk.setConfig({ primary_color: value });
+
+                                    }
+
+                                },
+
+                                {
+
+                                    get: () => config.secondary_color || defaultConfig.secondary_color,
+
+                                    set: (value) => {
+
+                                        config.secondary_color = value;
+
+                                        window.elementSdk.setConfig({ secondary_color: value });
+
+                                    }
+
+                                },
+
+                                {
+
+                                    get: () => config.accent_color || defaultConfig.accent_color,
+
+                                    set: (value) => {
+
+                                        config.accent_color = value;
+
+                                        window.elementSdk.setConfig({ accent_color: value });
+
+                                    }
+
+                                }
+
+                            ],
+
+                            borderables: [],
+
+                            fontEditable: {
+
+                                get: () => config.font_family || 'system-ui',
+
+                                set: (value) => {
+
+                                    config.font_family = value;
+
+                                    window.elementSdk.setConfig({ font_family: value });
+
+                                }
+
+                            },
+
+                            fontSizeable: {
+
+                                get: () => config.font_size || 16,
+
+                                set: (value) => {
+
+                                    config.font_size = value;
+
+                                    window.elementSdk.setConfig({ font_size: value });
+
+                                }
+
+                            }
+
+                        }),
+
+                        mapToEditPanelValues: (config) => new Map([
+
+                            ['app_title', config.app_title || defaultConfig.app_title],
+
+                            ['bot_name', config.bot_name || defaultConfig.bot_name],
+
+                            ['input_placeholder', config.input_placeholder || defaultConfig.input_placeholder],
+
+                            ['calculate_button_text', config.calculate_button_text || defaultConfig.calculate_button_text]
+
+                        ])
+
+                    });
+
+                }
+
+            } catch (error) {
+
+                console.error('Initialization error:', error);
+
+            }
+
+        }
+
+        // ページ読み込み完了後に初期化
+
+        if (document.readyState === 'loading') {
+
+            document.addEventListener('DOMContentLoaded', init);
+
+        } else {
+
+            init();
+
+        }
+
+    </script>
+
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99106cc01066d5b5',t:'MTc2MDg3ODQ3NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+
+</html>

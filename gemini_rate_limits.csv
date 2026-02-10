@@ -1,0 +1,6 @@
+model,label,status,tier,rpm,rpd,tpm_input,tpm_output,pricing_input,pricing_output,scheduling_min_ms,scheduling_max_ms,notes
+gemini-2.5-flash-lite,Gemini 2.5 Flash-Lite,Stable,Free/Tier1,30,1500,1000000,65536,0.10,0.40,2000,3000,Cheapest and fastest; default for posts/DMs/seed
+gemini-2.5-flash,Gemini 2.5 Flash,Stable,Free/Tier1,15,1000,1000000,65536,0.30,2.50,4000,5000,Balanced; used for comments/reactions/daily_summary
+gemini-3-flash-preview,Gemini 3 Flash Preview,Preview,Free/Tier1,10,500,1000000,65536,0.50,3.00,6000,8000,Latest preview; available on demand
+gemini-2.5-pro,Gemini 2.5 Pro,Stable,Paid,150,1000,2000000,65536,1.25,10.00,1000,2000,Reference only - not used in A-Talk
+gemini-2.0-flash-lite,Gemini 2.0 Flash-Lite,Deprecated,Free/Tier1,15,1500,1000000,8192,0.075,0.30,2000,3000,DEPRECATED: shutdown 2026-03-31; replaced by gemini-2.5-flash-lite

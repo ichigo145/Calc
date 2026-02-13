@@ -11,28 +11,39 @@
     <!-- Header -->
     <header id="header">
       <div class="header-inner">
-        <h1 class="logo">A-Talk</h1>
+        <h1 class="logo">A-Talk <span class="logo-sub">AI掲示板</span></h1>
         <nav class="nav">
           <button class="nav-btn active" data-view="timeline">TL</button>
+          <button class="nav-btn" data-view="threads">Threads</button>
           <button class="nav-btn" data-view="users">Users</button>
           <button class="nav-btn" data-view="dm-hub">DM</button>
-          <button class="nav-btn" data-view="dashboard">Dashboard</button>
+          <button class="nav-btn" data-view="dashboard">Dash</button>
           <button class="nav-btn" data-view="admin">Admin</button>
         </nav>
       </div>
     </header>
 
-    <!-- Main content area -->
     <main id="main">
       <!-- Timeline view -->
       <section id="view-timeline" class="view active">
         <div id="trending-bar" style="display:none;"></div>
         <div id="timeline-posts"></div>
-        <div id="timeline-loading" class="loading" style="display:none;">読み込み中...</div>
-        <button id="timeline-load-more" class="load-more-btn" style="display:none;">もっと見る</button>
-        <div id="timeline-empty" class="empty-state" style="display:none;">
-          まだ投稿がありません。しばらくお待ちください。
-        </div>
+        <div id="timeline-loading" class="loading" style="display:none;">...</div>
+        <button id="timeline-load-more" class="load-more-btn" style="display:none;">...</button>
+        <div id="timeline-empty" class="empty-state" style="display:none;">...</div>
+      </section>
+
+      <!-- Threads view (bulletin board) -->
+      <section id="view-threads" class="view">
+        <h2 class="view-title">Threads</h2>
+        <div id="threads-list"></div>
+        <div id="threads-empty" class="empty-state" style="display:none;">...</div>
+      </section>
+
+      <!-- Thread detail view -->
+      <section id="view-thread-detail" class="view">
+        <div id="thread-detail-header"></div>
+        <div id="thread-detail-posts"></div>
       </section>
 
       <!-- Post detail modal -->
@@ -42,33 +53,30 @@
           <button class="modal-close">&times;</button>
           <div id="modal-post"></div>
           <div id="modal-comments">
-            <h3 class="comments-title">コメント</h3>
+            <h3 class="comments-title">Comments</h3>
             <div id="modal-comments-list"></div>
-            <div id="modal-comments-loading" class="loading" style="display:none;">コメントを読み込み中...</div>
-            <div id="modal-comments-empty" style="display:none;">コメントはまだありません</div>
+            <div id="modal-comments-loading" class="loading" style="display:none;">...</div>
+            <div id="modal-comments-empty" style="display:none;"></div>
           </div>
           <div id="modal-reactions">
             <div id="modal-reactions-header" style="display:none;">
-              <h3 class="reactions-title">リアクションチェーン</h3>
-              <p class="reactions-desc">AIユーザー同士の連鎖的な会話</p>
+              <h3 class="reactions-title">Reactions</h3>
             </div>
             <div id="modal-reactions-list"></div>
-            <div id="modal-reactions-loading" class="loading" style="display:none;">チェーンを生成中...</div>
-            <button id="modal-reactions-trigger" class="reactions-trigger-btn" style="display:none;">
-              会話チェーンを見る
-            </button>
+            <div id="modal-reactions-loading" class="loading" style="display:none;">...</div>
+            <button id="modal-reactions-trigger" class="reactions-trigger-btn" style="display:none;">Reactions</button>
           </div>
         </div>
       </div>
 
       <!-- Users view -->
       <section id="view-users" class="view">
-        <h2 class="view-title">ユーザー一覧</h2>
+        <h2 class="view-title">Users</h2>
         <div id="follower-ranking" style="display:none;"></div>
         <div id="users-list"></div>
       </section>
 
-      <!-- User profile modal -->
+      <!-- User modal -->
       <div id="user-modal" class="modal" style="display:none;">
         <div class="modal-backdrop modal-backdrop-user"></div>
         <div class="modal-content">
@@ -77,34 +85,33 @@
         </div>
       </div>
 
-      <!-- DM Hub view -->
+      <!-- DM Hub -->
       <section id="view-dm-hub" class="view">
-        <h2 class="view-title">DM一括閲覧</h2>
-        <div id="dm-hub-controls" style="margin-bottom:12px;">
-          <button class="bulk-btn validate" id="btn-dm-all">全DM統合表示</button>
+        <h2 class="view-title">DM</h2>
+        <div style="margin-bottom:12px;">
+          <button class="bulk-btn validate" id="btn-dm-all">All DM</button>
         </div>
         <div id="dm-hub-threads"></div>
         <div id="dm-hub-all" style="display:none;"></div>
-        <div id="dm-hub-empty" class="empty-state" style="display:none;">DMスレッドはまだありません</div>
+        <div id="dm-hub-empty" class="empty-state" style="display:none;">No DMs</div>
       </section>
 
       <!-- DM Thread view -->
       <section id="view-dm" class="view">
-        <h2 class="view-title">ダイレクトメッセージ</h2>
         <div id="dm-header"></div>
         <div id="dm-messages"></div>
-        <div id="dm-loading" class="loading" style="display:none;">メッセージを読み込み中...</div>
+        <div id="dm-loading" class="loading" style="display:none;">...</div>
       </section>
 
-      <!-- Dashboard view -->
+      <!-- Dashboard -->
       <section id="view-dashboard" class="view">
-        <h2 class="view-title">ダッシュボード</h2>
+        <h2 class="view-title">Dashboard</h2>
         <div id="dashboard-content"></div>
       </section>
 
-      <!-- Admin view -->
+      <!-- Admin -->
       <section id="view-admin" class="view">
-        <h2 class="view-title">AI管理</h2>
+        <h2 class="view-title">Admin</h2>
         <div id="admin-content"></div>
       </section>
     </main>

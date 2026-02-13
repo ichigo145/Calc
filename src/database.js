@@ -1,12 +1,11 @@
 // ===========================================================================
-// database.js - SQLite database initialization and access layer (A-Talk v3.1)
+// database.js - SQLite database initialization and access layer (A-Talk v3.2)
 // ===========================================================================
-// v3.1 Changes:
-//   - anomaly_log: API異常ログ (HTTP エラー、ネットワークエラー等)
-//   - ai_daily_summary: 日次AI要約 (~700文字) の保存・参照
-//   - reactions: deterministic ordering (ORDER BY depth ASC, id ASC)
-//   - DB info/stats queries for admin viewing
-//   - DM bulk viewing: full thread content retrieval
+// v3.2 Changes:
+//   - threads table: bulletin-board style topic threads
+//   - auto_management table: ON/OFF toggles for auto-management features
+//   - conversation continuity: posts belong to topic threads
+//   - Posts can be either thread-starters or thread-replies
 // ===========================================================================
 
 import Database from 'better-sqlite3';
@@ -44,27 +43,42 @@ db.exec(`
 `);
 
 // ---------------------------------------------------------------------------
-// Table: posts
+// Table: threads - 掲示板スレッド (トピック単位の会話)
+// ---------------------------------------------------------------------------
+db.exec(`
+  CREATE TABLE IF NOT EXISTS threads (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic       TEXT    NOT NULL,
+    starter_id  INTEGER NOT NULL,
+    post_count  INTEGER NOT NULL DEFAULT 1,
+    last_post_at TEXT   NOT NULL DEFAULT (datetime('now')),
+    is_active   INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (starter_id) REFERENCES users(id)
+  );
+`);
+
+// ---------------------------------------------------------------------------
+// Table: posts - thread_id でスレッドに紐づく
 // ---------------------------------------------------------------------------
 db.exec(`
   CREATE TABLE IF NOT EXISTS posts (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id          INTEGER NOT NULL,
+    thread_id        INTEGER,
     content          TEXT    NOT NULL,
     has_media        INTEGER NOT NULL DEFAULT 1,
     popularity_score INTEGER NOT NULL CHECK(popularity_score >= 0 AND popularity_score <= 100),
     likes            INTEGER NOT NULL DEFAULT 0,
     created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (thread_id) REFERENCES threads(id)
   );
 `);
 
-// Add has_media column if not exists (migration for existing DB)
-try {
-  db.exec(`ALTER TABLE posts ADD COLUMN has_media INTEGER NOT NULL DEFAULT 1`);
-} catch (e) {
-  // Column already exists - ignore
-}
+// Migration: add thread_id and has_media columns if not exists
+try { db.exec(`ALTER TABLE posts ADD COLUMN thread_id INTEGER REFERENCES threads(id)`); } catch (e) { /* exists */ }
+try { db.exec(`ALTER TABLE posts ADD COLUMN has_media INTEGER NOT NULL DEFAULT 1`); } catch (e) { /* exists */ }
 
 // ---------------------------------------------------------------------------
 // Table: comments
@@ -97,7 +111,7 @@ db.exec(`
 `);
 
 // ---------------------------------------------------------------------------
-// Table: reactions (Reaction Chains feature)
+// Table: reactions (Reaction Chains) - DETERMINISTIC ORDER: depth ASC, id ASC
 // ---------------------------------------------------------------------------
 db.exec(`
   CREATE TABLE IF NOT EXISTS reactions (
@@ -115,7 +129,7 @@ db.exec(`
 `);
 
 // ---------------------------------------------------------------------------
-// Table: ai_memory - AIが過去の履歴を参照できるコンテキストDB
+// Table: ai_memory
 // ---------------------------------------------------------------------------
 db.exec(`
   CREATE TABLE IF NOT EXISTS ai_memory (
@@ -130,7 +144,7 @@ db.exec(`
 `);
 
 // ---------------------------------------------------------------------------
-// Table: ai_daily_summary - 日次AI要約 (~700文字)
+// Table: ai_daily_summary - 日次AI要約 (~700文字, Pro only)
 // ---------------------------------------------------------------------------
 db.exec(`
   CREATE TABLE IF NOT EXISTS ai_daily_summary (
@@ -206,7 +220,7 @@ for (const f of defaultFeatures) {
 }
 
 // ---------------------------------------------------------------------------
-// Table: followers - フォロワー予測結果のキャッシュ
+// Table: followers
 // ---------------------------------------------------------------------------
 db.exec(`
   CREATE TABLE IF NOT EXISTS followers (
@@ -218,10 +232,35 @@ db.exec(`
 `);
 
 // ---------------------------------------------------------------------------
+// Table: auto_management - 自動管理機能のON/OFF設定
+// ---------------------------------------------------------------------------
+db.exec(`
+  CREATE TABLE IF NOT EXISTS auto_management (
+    feature     TEXT PRIMARY KEY,
+    enabled     INTEGER NOT NULL DEFAULT 1,
+    updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// Initialize default auto-management settings
+const autoMgmtDefaults = [
+  'auto_rate_adjust',       // API使用頻度の自動調整
+  'auto_follower_recalc',   // フォロワー再計算 (1分間隔)
+  'auto_pause_resume',      // APIログ監視による自動停止/復帰
+];
+const stmtInitAutoMgmt = db.prepare(
+  `INSERT OR IGNORE INTO auto_management (feature, enabled) VALUES (?, 1)`
+);
+for (const f of autoMgmtDefaults) {
+  stmtInitAutoMgmt.run(f);
+}
+
+// ---------------------------------------------------------------------------
 // Indexes
 // ---------------------------------------------------------------------------
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_posts_thread_id ON posts(thread_id);
   CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id);
   CREATE INDEX IF NOT EXISTS idx_reactions_post_id ON reactions(post_id);
   CREATE INDEX IF NOT EXISTS idx_ai_memory_user_id ON ai_memory(user_id);
@@ -230,6 +269,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_dm_users ON direct_messages(from_user_id, to_user_id);
   CREATE INDEX IF NOT EXISTS idx_anomaly_log_created ON anomaly_log(created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_daily_summary_date ON ai_daily_summary(date DESC);
+  CREATE INDEX IF NOT EXISTS idx_threads_active ON threads(is_active, last_post_at DESC);
 `);
 
 // ---------------------------------------------------------------------------
@@ -250,22 +290,71 @@ const stmtGetUserCount = db.prepare(
   `SELECT COUNT(*) AS count FROM users`
 );
 
+// Threads
+const stmtInsertThread = db.prepare(
+  `INSERT INTO threads (topic, starter_id) VALUES (?, ?)`
+);
+const stmtGetActiveThreads = db.prepare(
+  `SELECT t.id, t.topic, t.starter_id, u.username AS starter_username,
+          t.post_count, t.last_post_at, t.is_active, t.created_at
+   FROM threads t
+   JOIN users u ON t.starter_id = u.id
+   WHERE t.is_active = 1
+   ORDER BY t.last_post_at DESC
+   LIMIT ?`
+);
+const stmtGetAllThreads = db.prepare(
+  `SELECT t.id, t.topic, t.starter_id, u.username AS starter_username,
+          t.post_count, t.last_post_at, t.is_active, t.created_at
+   FROM threads t
+   JOIN users u ON t.starter_id = u.id
+   ORDER BY t.last_post_at DESC
+   LIMIT ?`
+);
+const stmtGetThreadById = db.prepare(
+  `SELECT t.id, t.topic, t.starter_id, u.username AS starter_username,
+          t.post_count, t.last_post_at, t.is_active, t.created_at
+   FROM threads t
+   JOIN users u ON t.starter_id = u.id
+   WHERE t.id = ?`
+);
+const stmtUpdateThreadActivity = db.prepare(
+  `UPDATE threads SET post_count = post_count + 1, last_post_at = datetime('now') WHERE id = ?`
+);
+const stmtDeactivateThread = db.prepare(
+  `UPDATE threads SET is_active = 0 WHERE id = ?`
+);
+const stmtGetThreadPostCount = db.prepare(
+  `SELECT COUNT(*) AS count FROM posts WHERE thread_id = ?`
+);
+
 // Posts
 const stmtInsertPost = db.prepare(
-  `INSERT INTO posts (user_id, content, has_media, popularity_score, likes) VALUES (?, ?, ?, ?, ?)`
+  `INSERT INTO posts (user_id, thread_id, content, has_media, popularity_score, likes) VALUES (?, ?, ?, ?, ?, ?)`
 );
 const stmtGetTimeline = db.prepare(
-  `SELECT p.id, p.user_id, u.username, p.content, p.has_media, p.popularity_score, p.likes, p.created_at
+  `SELECT p.id, p.user_id, u.username, p.thread_id, p.content, p.has_media, p.popularity_score, p.likes, p.created_at,
+          t.topic AS thread_topic
    FROM posts p
    JOIN users u ON p.user_id = u.id
+   LEFT JOIN threads t ON p.thread_id = t.id
    ORDER BY p.created_at DESC
    LIMIT ? OFFSET ?`
 );
 const stmtGetPostById = db.prepare(
+  `SELECT p.id, p.user_id, u.username, p.thread_id, p.content, p.has_media, p.popularity_score, p.likes, p.created_at,
+          t.topic AS thread_topic
+   FROM posts p
+   JOIN users u ON p.user_id = u.id
+   LEFT JOIN threads t ON p.thread_id = t.id
+   WHERE p.id = ?`
+);
+const stmtGetPostsByThreadId = db.prepare(
   `SELECT p.id, p.user_id, u.username, p.content, p.has_media, p.popularity_score, p.likes, p.created_at
    FROM posts p
    JOIN users u ON p.user_id = u.id
-   WHERE p.id = ?`
+   WHERE p.thread_id = ?
+   ORDER BY p.created_at ASC`
 );
 const stmtGetPostCount = db.prepare(
   `SELECT COUNT(*) AS count FROM posts`
@@ -306,7 +395,7 @@ const stmtGetDMThread = db.prepare(
    LIMIT ? OFFSET ?`
 );
 
-// DM一括閲覧用: 全DMスレッド一覧
+// DM一括閲覧
 const stmtGetAllDMThreads = db.prepare(
   `SELECT
      CASE WHEN dm.from_user_id < dm.to_user_id THEN dm.from_user_id ELSE dm.to_user_id END AS user_a,
@@ -318,7 +407,6 @@ const stmtGetAllDMThreads = db.prepare(
    ORDER BY last_message_at DESC`
 );
 
-// DM一括閲覧: 全DMメッセージ取得 (一画面統合表示用)
 const stmtGetAllDMs = db.prepare(
   `SELECT dm.id, dm.from_user_id, uf.username AS from_username,
           dm.to_user_id, ut.username AS to_username,
@@ -330,7 +418,7 @@ const stmtGetAllDMs = db.prepare(
    LIMIT ?`
 );
 
-// Reactions (Reaction Chains) - DETERMINISTIC ORDER: depth ASC, id ASC
+// Reactions (DETERMINISTIC: depth ASC, id ASC)
 const stmtInsertReaction = db.prepare(
   `INSERT INTO reactions (post_id, user_id, content, depth, parent_id) VALUES (?, ?, ?, ?, ?)`
 );
@@ -381,7 +469,6 @@ const stmtGetRecentDailySummaries = db.prepare(
    ORDER BY date DESC
    LIMIT ?`
 );
-// Get recent content for summarization (last 500 items across tables)
 const stmtGetRecentContentForSummary = db.prepare(
   `SELECT 'post' AS type, p.content, u.username, p.created_at AS ts
    FROM posts p JOIN users u ON p.user_id = u.id
@@ -410,7 +497,7 @@ const stmtGetUsageHistory = db.prepare(
   `SELECT date, request_count FROM api_usage ORDER BY date DESC LIMIT ?`
 );
 
-// API Usage Log (per-request detail)
+// API Usage Log
 const stmtInsertUsageLog = db.prepare(
   `INSERT INTO api_usage_log (model, feature, tokens_in, tokens_out, success, error_msg)
    VALUES (?, ?, ?, ?, ?, ?)`
@@ -478,6 +565,17 @@ const stmtGetFollowerByUserId = db.prepare(
    WHERE f.user_id = ?`
 );
 
+// Auto Management
+const stmtGetAutoMgmt = db.prepare(
+  `SELECT feature, enabled, updated_at FROM auto_management WHERE feature = ?`
+);
+const stmtGetAllAutoMgmt = db.prepare(
+  `SELECT feature, enabled, updated_at FROM auto_management ORDER BY feature`
+);
+const stmtSetAutoMgmt = db.prepare(
+  `UPDATE auto_management SET enabled = ?, updated_at = datetime('now') WHERE feature = ?`
+);
+
 // Stats queries
 const stmtGetUserPostStats = db.prepare(
   `SELECT user_id, COUNT(*) AS post_count, SUM(likes) AS total_likes,
@@ -488,16 +586,17 @@ const stmtGetUserCommentCount = db.prepare(
   `SELECT user_id, COUNT(*) AS comment_count FROM comments GROUP BY user_id`
 );
 
-// Trending: most active topics (by recent posts content patterns)
+// Trending: recent posts content
 const stmtGetRecentPosts = db.prepare(
-  `SELECT p.id, p.content, p.has_media, p.popularity_score, p.likes, p.created_at, u.username
+  `SELECT p.id, p.content, p.has_media, p.popularity_score, p.likes, p.created_at, u.username, p.thread_id
    FROM posts p JOIN users u ON p.user_id = u.id
    ORDER BY p.created_at DESC LIMIT ?`
 );
 
-// DB Info/Stats (for admin viewing)
+// DB Info/Stats
 const stmtGetTableCounts = db.prepare(
   `SELECT 'users' AS name, COUNT(*) AS count FROM users
+   UNION ALL SELECT 'threads', COUNT(*) FROM threads
    UNION ALL SELECT 'posts', COUNT(*) FROM posts
    UNION ALL SELECT 'comments', COUNT(*) FROM comments
    UNION ALL SELECT 'direct_messages', COUNT(*) FROM direct_messages
@@ -507,55 +606,55 @@ const stmtGetTableCounts = db.prepare(
    UNION ALL SELECT 'api_usage_log', COUNT(*) FROM api_usage_log
    UNION ALL SELECT 'anomaly_log', COUNT(*) FROM anomaly_log
    UNION ALL SELECT 'followers', COUNT(*) FROM followers
-   UNION ALL SELECT 'pause_state', COUNT(*) FROM pause_state`
+   UNION ALL SELECT 'pause_state', COUNT(*) FROM pause_state
+   UNION ALL SELECT 'auto_management', COUNT(*) FROM auto_management`
 );
 
 // ---------------------------------------------------------------------------
 // Exported functions
 // ---------------------------------------------------------------------------
 
+// --- Users ---
 export function insertUser(username, personality, tone) {
   const info = stmtInsertUser.run(username, personality, tone);
   return { id: info.lastInsertRowid };
 }
-export function getAllUsers() {
-  return stmtGetAllUsers.all();
-}
-export function getUserById(id) {
-  return stmtGetUserById.get(id);
-}
-export function getUserCount() {
-  return stmtGetUserCount.get().count;
-}
+export function getAllUsers() { return stmtGetAllUsers.all(); }
+export function getUserById(id) { return stmtGetUserById.get(id); }
+export function getUserCount() { return stmtGetUserCount.get().count; }
 
-export function insertPost(userId, content, hasMedia, popularityScore, likes) {
-  const info = stmtInsertPost.run(userId, content, hasMedia ? 1 : 0, popularityScore, likes);
+// --- Threads ---
+export function insertThread(topic, starterId) {
+  const info = stmtInsertThread.run(topic, starterId);
   return { id: info.lastInsertRowid };
 }
-export function getTimeline(limit = 20, offset = 0) {
-  return stmtGetTimeline.all(limit, offset);
-}
-export function getPostById(id) {
-  return stmtGetPostById.get(id);
-}
-export function getPostCount() {
-  return stmtGetPostCount.get().count;
-}
-export function getRecentPostUserIds(n) {
-  return stmtGetRecentPostUserIds.all(n).map(row => row.user_id);
-}
+export function getActiveThreads(limit = 10) { return stmtGetActiveThreads.all(limit); }
+export function getAllThreadsList(limit = 50) { return stmtGetAllThreads.all(limit); }
+export function getThreadById(id) { return stmtGetThreadById.get(id); }
+export function updateThreadActivity(threadId) { stmtUpdateThreadActivity.run(threadId); }
+export function deactivateThread(threadId) { stmtDeactivateThread.run(threadId); }
+export function getThreadPostCount(threadId) { return stmtGetThreadPostCount.get(threadId).count; }
 
+// --- Posts ---
+export function insertPost(userId, content, hasMedia, popularityScore, likes, threadId = null) {
+  const info = stmtInsertPost.run(userId, threadId, content, hasMedia ? 1 : 0, popularityScore, likes);
+  return { id: info.lastInsertRowid };
+}
+export function getTimeline(limit = 20, offset = 0) { return stmtGetTimeline.all(limit, offset); }
+export function getPostById(id) { return stmtGetPostById.get(id); }
+export function getPostsByThreadId(threadId) { return stmtGetPostsByThreadId.all(threadId); }
+export function getPostCount() { return stmtGetPostCount.get().count; }
+export function getRecentPostUserIds(n) { return stmtGetRecentPostUserIds.all(n).map(row => row.user_id); }
+
+// --- Comments ---
 export function insertComment(postId, userId, content) {
   const info = stmtInsertComment.run(postId, userId, content);
   return { id: info.lastInsertRowid };
 }
-export function getCommentsByPostId(postId) {
-  return stmtGetCommentsByPostId.all(postId);
-}
-export function getCommentCountByPostId(postId) {
-  return stmtGetCommentCountByPostId.get(postId).count;
-}
+export function getCommentsByPostId(postId) { return stmtGetCommentsByPostId.all(postId); }
+export function getCommentCountByPostId(postId) { return stmtGetCommentCountByPostId.get(postId).count; }
 
+// --- Direct Messages ---
 export function insertDM(fromUserId, toUserId, content) {
   const info = stmtInsertDM.run(fromUserId, toUserId, content);
   return { id: info.lastInsertRowid };
@@ -563,48 +662,32 @@ export function insertDM(fromUserId, toUserId, content) {
 export function getDMThread(userA, userB, limit = 50, offset = 0) {
   return stmtGetDMThread.all(userA, userB, userB, userA, limit, offset);
 }
-export function getAllDMThreads() {
-  return stmtGetAllDMThreads.all();
-}
-export function getAllDMs(limit = 200) {
-  return stmtGetAllDMs.all(limit);
-}
+export function getAllDMThreads() { return stmtGetAllDMThreads.all(); }
+export function getAllDMs(limit = 200) { return stmtGetAllDMs.all(limit); }
 
-// --- Reaction Chains (DETERMINISTIC ORDER: depth ASC, id ASC) ---
+// --- Reaction Chains ---
 export function insertReaction(postId, userId, content, depth, parentId) {
   const info = stmtInsertReaction.run(postId, userId, content, depth, parentId || null);
   return { id: info.lastInsertRowid };
 }
-export function getReactionsByPostId(postId) {
-  return stmtGetReactionsByPostId.all(postId);
-}
-export function getReactionCountByPostId(postId) {
-  return stmtGetReactionCountByPostId.get(postId).count;
-}
+export function getReactionsByPostId(postId) { return stmtGetReactionsByPostId.all(postId); }
+export function getReactionCountByPostId(postId) { return stmtGetReactionCountByPostId.get(postId).count; }
 
 // --- AI Memory ---
 export function insertMemory(userId, type, content, context = null) {
   const info = stmtInsertMemory.run(userId, type, content, context);
   return { id: info.lastInsertRowid };
 }
-export function getUserMemory(userId, limit = 10) {
-  return stmtGetUserMemory.all(userId, limit);
-}
-export function getUserMemoryByType(userId, type, limit = 5) {
-  return stmtGetUserMemoryByType.all(userId, type, limit);
-}
+export function getUserMemory(userId, limit = 10) { return stmtGetUserMemory.all(userId, limit); }
+export function getUserMemoryByType(userId, type, limit = 5) { return stmtGetUserMemoryByType.all(userId, type, limit); }
 
 // --- AI Daily Summary ---
 export function insertDailySummary(date, summary, itemCount, modelUsed) {
   const info = stmtInsertDailySummary.run(date, summary, itemCount, modelUsed);
   return { id: info.lastInsertRowid };
 }
-export function getDailySummary(date) {
-  return stmtGetDailySummary.get(date);
-}
-export function getRecentDailySummaries(limit = 7) {
-  return stmtGetRecentDailySummaries.all(limit);
-}
+export function getDailySummary(date) { return stmtGetDailySummary.get(date); }
+export function getRecentDailySummaries(limit = 7) { return stmtGetRecentDailySummaries.all(limit); }
 export function getRecentContentForSummary(sinceDate) {
   return stmtGetRecentContentForSummary.all(sinceDate, sinceDate, sinceDate);
 }
@@ -619,9 +702,7 @@ export function getTodayApiUsage() {
   const row = stmtGetUsage.get(today);
   return row ? row.request_count : 0;
 }
-export function getUsageHistory(days = 7) {
-  return stmtGetUsageHistory.all(days);
-}
+export function getUsageHistory(days = 7) { return stmtGetUsageHistory.all(days); }
 
 // --- API Usage Log ---
 export function insertUsageLog(model, feature, tokensIn = 0, tokensOut = 0, success = true, errorMsg = null) {
@@ -631,36 +712,23 @@ export function getUsageLogToday() {
   const today = new Date().toISOString().slice(0, 10);
   return stmtGetUsageLogToday.all(today + 'T00:00:00');
 }
-export function getRecentUsageLogs(limit = 20) {
-  return stmtGetRecentUsageLogs.all(limit);
-}
+export function getRecentUsageLogs(limit = 20) { return stmtGetRecentUsageLogs.all(limit); }
 
 // --- Anomaly Log ---
 export function insertAnomalyLog(type, model, feature, message, httpStatus = null) {
   stmtInsertAnomalyLog.run(type, model, feature, message, httpStatus);
 }
-export function getRecentAnomalies(limit = 30) {
-  return stmtGetRecentAnomalies.all(limit);
-}
+export function getRecentAnomalies(limit = 30) { return stmtGetRecentAnomalies.all(limit); }
 export function getAnomalyCountToday() {
   const today = new Date().toISOString().slice(0, 10);
   return stmtGetAnomalyCountToday.all(today + 'T00:00:00');
 }
 
 // --- Pause State ---
-export function getPauseState(feature) {
-  return stmtGetPauseState.get(feature);
-}
-export function getAllPauseStates() {
-  return stmtGetAllPauseStates.all();
-}
+export function getPauseState(feature) { return stmtGetPauseState.get(feature); }
+export function getAllPauseStates() { return stmtGetAllPauseStates.all(); }
 export function setPauseState(feature, paused, reason = null) {
-  stmtSetPauseState.run(
-    paused ? 1 : 0,
-    paused ? new Date().toISOString() : null,
-    reason,
-    feature
-  );
+  stmtSetPauseState.run(paused ? 1 : 0, paused ? new Date().toISOString() : null, reason, feature);
 }
 export function isFeaturePaused(feature) {
   const state = stmtGetPauseState.get(feature);
@@ -668,26 +736,23 @@ export function isFeaturePaused(feature) {
 }
 
 // --- Followers ---
-export function upsertFollower(userId, followerCount) {
-  stmtUpsertFollower.run(userId, followerCount, followerCount);
-}
-export function getAllFollowers() {
-  return stmtGetFollowers.all();
-}
-export function getFollowerByUserId(userId) {
-  return stmtGetFollowerByUserId.get(userId);
+export function upsertFollower(userId, followerCount) { stmtUpsertFollower.run(userId, followerCount, followerCount); }
+export function getAllFollowers() { return stmtGetFollowers.all(); }
+export function getFollowerByUserId(userId) { return stmtGetFollowerByUserId.get(userId); }
+
+// --- Auto Management ---
+export function getAutoManagement(feature) { return stmtGetAutoMgmt.get(feature); }
+export function getAllAutoManagement() { return stmtGetAllAutoMgmt.all(); }
+export function setAutoManagement(feature, enabled) { stmtSetAutoMgmt.run(enabled ? 1 : 0, feature); }
+export function isAutoManagementEnabled(feature) {
+  const row = stmtGetAutoMgmt.get(feature);
+  return row ? row.enabled === 1 : true;
 }
 
 // --- Stats ---
-export function getUserPostStats() {
-  return stmtGetUserPostStats.all();
-}
-export function getUserCommentCounts() {
-  return stmtGetUserCommentCount.all();
-}
-export function getRecentPosts(limit = 50) {
-  return stmtGetRecentPosts.all(limit);
-}
+export function getUserPostStats() { return stmtGetUserPostStats.all(); }
+export function getUserCommentCounts() { return stmtGetUserCommentCount.all(); }
+export function getRecentPosts(limit = 50) { return stmtGetRecentPosts.all(limit); }
 
 // --- DB Info (Admin) ---
 export function getDbInfo() {
@@ -715,8 +780,6 @@ export function insertUsersTransaction(users) {
   transaction(users);
 }
 
-export function closeDatabase() {
-  db.close();
-}
+export function closeDatabase() { db.close(); }
 
 export default db;

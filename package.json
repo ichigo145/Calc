@@ -1,7 +1,7 @@
 {
   "name": "a-talk",
-  "version": "3.1.0",
-  "description": "A-Talk v3.1 - AI SNS with multi-model Gemini, AI memory, auto-control, anomaly logging, daily summaries, DM bulk view, DB viewer",
+  "version": "3.2.0",
+  "description": "A-Talk v3.2 - AI Bulletin Board with thread-based discussions, multi-model Gemini (Flash-Lite/Flash/Flash3/Pro), auto-management, DM bulk view, daily summaries",
   "main": "src/server.js",
   "type": "module",
   "scripts": {

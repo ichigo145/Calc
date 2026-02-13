@@ -1,0 +1,6 @@
+model,label,status,tier,rpm,rpd,tpm_input,tpm_output,pricing_input,pricing_output,scheduling_min_ms,scheduling_max_ms,notes
+gemini-2.5-flash-lite,Gemini 2.5 Flash-Lite,Stable,Free/Tier1,4000,unlimited,4000000,65536,0.10,0.40,2000,3000,Cheapest and fastest; default for posts/DMs/seed; loosest rate limits
+gemini-2.5-flash,Gemini 2.5 Flash,Stable,Free/Tier1,1000,10000,1000000,65536,0.30,2.50,2000,3000,Balanced; used for comments/reactions
+gemini-3-flash-preview,Gemini 3 Flash Preview,Preview,Free/Tier1,1000,10000,1000000,65536,0.50,3.00,2000,3000,Latest preview; available on demand
+gemini-2.5-pro,Gemini 2.5 Pro,Stable,Paid,150,1000,2000000,65536,1.25,10.00,1000,2000,Used for daily summaries ONLY; RPM 150 TPM 2M RPD 1K
+gemini-2.0-flash-lite,Gemini 2.0 Flash-Lite,Deprecated,Free/Tier1,15,1500,1000000,8192,0.075,0.30,2000,3000,DEPRECATED: shutdown 2026-03-31; replaced by gemini-2.5-flash-lite

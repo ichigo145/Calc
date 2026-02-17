@@ -1,12 +1,7 @@
 // ===========================================================================
-// api-controller.js - API自動制御 + 自動管理システム (A-Talk v3.2)
+// api-controller.js - API自動制御 + 自動管理 + ポイントシステム (A-Talk v4.0)
 // ===========================================================================
-// v3.2 Changes:
-//   - Auto-management ON/OFF toggles (auto_rate_adjust, auto_follower_recalc, auto_pause_resume)
-//   - Follower recalculation every 60 seconds (when enabled)
-//   - Auto-adjust posting rate based on API usage
-//   - Auto-pause/resume based on anomaly monitoring
-//   - Updated limits for loose rate limits (RPD 10K)
+// v4.0: DM削除、ポイントデイリーリセット統合
 // ===========================================================================
 
 import {
@@ -21,43 +16,47 @@ import {
   getAnomalyCountToday,
   getDbInfo,
   getRecentDailySummaries,
+  getRecentThreadSummaries,
   isAutoManagementEnabled,
   getAllAutoManagement,
   setAutoManagement,
+  grantDailyPoints,
+  getAllUserPoints,
+  getAllPopularity,
 } from './database.js';
 
 // ---------------------------------------------------------------------------
-// Constants - Updated for loose rate limits
+// Constants
 // ---------------------------------------------------------------------------
 const DAILY_HARD_LIMIT = 10000;
 const DAILY_SOFT_LIMIT = 9500;
 const RESERVE_MIN = 200;
 
-// Auto-pause thresholds (percentage of DAILY_SOFT_LIMIT)
 const THRESHOLD_WARN = 0.70;
 const THRESHOLD_RESTRICT = 0.80;
 const THRESHOLD_CRITICAL = 0.90;
 
-// Features controlled
-const ON_DEMAND_FEATURES = ['comment_generation', 'dm_generation', 'reaction_chain'];
+// DM removed from features
+const ON_DEMAND_FEATURES = ['comment_generation', 'reaction_chain'];
 const ALL_FEATURES = ['post_generation', ...ON_DEMAND_FEATURES];
 
-// Follower recalc interval (1 minute)
 const FOLLOWER_RECALC_INTERVAL_MS = 60_000;
 let followerRecalcTimer = null;
 
-// Anomaly monitoring interval (30 seconds)
 const ANOMALY_CHECK_INTERVAL_MS = 30_000;
 let anomalyCheckTimer = null;
 
-// Rate adjustment state
-let currentPostIntervalMultiplier = 1.0; // 1.0 = normal, >1.0 = slower, <1.0 = faster
+// Daily point grant timer
+const DAILY_POINT_CHECK_INTERVAL_MS = 60_000; // Check every minute
+let dailyPointTimer = null;
+let lastDailyPointDate = '';
+
+let currentPostIntervalMultiplier = 1.0;
 
 // ---------------------------------------------------------------------------
-// Auto-control check
+// Auto-control
 // ---------------------------------------------------------------------------
 export function evaluateAndControl() {
-  // Only auto-pause/resume if the feature is enabled
   if (!isAutoManagementEnabled('auto_pause_resume')) {
     const todayUsage = getTodayApiUsage();
     const remaining = DAILY_HARD_LIMIT - todayUsage;
@@ -72,8 +71,8 @@ export function evaluateAndControl() {
   if (usageRatio >= THRESHOLD_CRITICAL) {
     for (const feature of ALL_FEATURES) {
       if (!isFeaturePaused(feature)) {
-        setPauseState(feature, true, `Auto-paused: usage at ${Math.round(usageRatio * 100)}% (critical)`);
-        actions.push(`auto-paused: ${feature}`);
+        setPauseState(feature, true, `自動停止: 使用率 ${Math.round(usageRatio * 100)}% (危険)`);
+        actions.push(`自動停止: ${feature}`);
       }
     }
     return { level: 'critical', usage: todayUsage, remaining, actions };
@@ -82,8 +81,8 @@ export function evaluateAndControl() {
   if (usageRatio >= THRESHOLD_RESTRICT) {
     for (const feature of ON_DEMAND_FEATURES) {
       if (!isFeaturePaused(feature)) {
-        setPauseState(feature, true, `Auto-paused: usage at ${Math.round(usageRatio * 100)}% (restricted)`);
-        actions.push(`auto-paused: ${feature}`);
+        setPauseState(feature, true, `自動停止: 使用率 ${Math.round(usageRatio * 100)}% (制限)`);
+        actions.push(`自動停止: ${feature}`);
       }
     }
     return { level: 'restricted', usage: todayUsage, remaining, actions };
@@ -93,12 +92,11 @@ export function evaluateAndControl() {
     return { level: 'warning', usage: todayUsage, remaining, actions };
   }
 
-  // NORMAL: auto-resume any auto-paused features
   const pauseStates = getAllPauseStates();
   for (const state of pauseStates) {
-    if (state.paused === 1 && state.reason && state.reason.startsWith('Auto-paused:')) {
+    if (state.paused === 1 && state.reason && state.reason.startsWith('自動停止:')) {
       setPauseState(state.feature, false, null);
-      actions.push(`auto-resumed: ${state.feature}`);
+      actions.push(`自動復帰: ${state.feature}`);
     }
   }
 
@@ -106,33 +104,32 @@ export function evaluateAndControl() {
 }
 
 // ---------------------------------------------------------------------------
-// Auto rate adjustment - dynamically adjust post interval
+// Rate adjustment
 // ---------------------------------------------------------------------------
 export function evaluateRateAdjustment() {
   if (!isAutoManagementEnabled('auto_rate_adjust')) {
     currentPostIntervalMultiplier = 1.0;
-    return { multiplier: 1.0, reason: 'auto_rate_adjust disabled' };
+    return { multiplier: 1.0, reason: '自動レート調整無効' };
   }
 
   const todayUsage = getTodayApiUsage();
   const usageRatio = todayUsage / DAILY_SOFT_LIMIT;
 
   if (usageRatio >= 0.90) {
-    currentPostIntervalMultiplier = 5.0; // Very slow
-    return { multiplier: 5.0, reason: `Critical usage (${Math.round(usageRatio * 100)}%)` };
+    currentPostIntervalMultiplier = 5.0;
+    return { multiplier: 5.0, reason: `危険 (${Math.round(usageRatio * 100)}%)` };
   }
   if (usageRatio >= 0.80) {
-    currentPostIntervalMultiplier = 3.0; // Slow
-    return { multiplier: 3.0, reason: `High usage (${Math.round(usageRatio * 100)}%)` };
+    currentPostIntervalMultiplier = 3.0;
+    return { multiplier: 3.0, reason: `高 (${Math.round(usageRatio * 100)}%)` };
   }
   if (usageRatio >= 0.60) {
     currentPostIntervalMultiplier = 1.5;
-    return { multiplier: 1.5, reason: `Moderate usage (${Math.round(usageRatio * 100)}%)` };
+    return { multiplier: 1.5, reason: `中 (${Math.round(usageRatio * 100)}%)` };
   }
 
-  // Low usage: post faster
   currentPostIntervalMultiplier = 1.0;
-  return { multiplier: 1.0, reason: `Normal usage (${Math.round(usageRatio * 100)}%)` };
+  return { multiplier: 1.0, reason: `通常 (${Math.round(usageRatio * 100)}%)` };
 }
 
 export function getPostIntervalMultiplier() {
@@ -140,45 +137,59 @@ export function getPostIntervalMultiplier() {
 }
 
 // ---------------------------------------------------------------------------
-// Anomaly monitoring - auto-pause on repeated errors
+// Anomaly monitoring
 // ---------------------------------------------------------------------------
 function checkAnomaliesAndAct() {
   if (!isAutoManagementEnabled('auto_pause_resume')) return;
 
   const anomalyCounts = getAnomalyCountToday();
   let total429 = 0;
-  let total503 = 0;
   let totalAuth = 0;
 
   for (const ac of anomalyCounts) {
     if (ac.type === 'rate_limit_429') total429 += ac.count;
-    if (ac.type === 'model_overloaded_503') total503 += ac.count;
     if (ac.type === 'auth_error') totalAuth += ac.count;
   }
 
-  // If too many 429s, slow down everything
   if (total429 >= 10) {
     for (const feature of ALL_FEATURES) {
       if (!isFeaturePaused(feature)) {
-        setPauseState(feature, true, `Auto-paused: ${total429} rate limit errors today`);
-        console.log(`[auto-mgmt] Auto-paused ${feature} due to ${total429} 429 errors`);
+        setPauseState(feature, true, `自動停止: ${total429}件のレート制限エラー`);
+        console.log(`[auto-mgmt] 自動停止 ${feature}: ${total429}件の429エラー`);
       }
     }
   }
 
-  // If auth errors, pause everything
   if (totalAuth >= 3) {
     for (const feature of ALL_FEATURES) {
       if (!isFeaturePaused(feature)) {
-        setPauseState(feature, true, `Auto-paused: ${totalAuth} auth errors - check API key`);
-        console.log(`[auto-mgmt] Auto-paused ${feature} due to ${totalAuth} auth errors`);
+        setPauseState(feature, true, `自動停止: ${totalAuth}件の認証エラー - APIキー確認`);
+        console.log(`[auto-mgmt] 自動停止 ${feature}: ${totalAuth}件の認証エラー`);
       }
     }
   }
 }
 
 // ---------------------------------------------------------------------------
-// Follower recalculation timer
+// Daily point grant (毎日0時に100 Point付与)
+// ---------------------------------------------------------------------------
+function checkDailyPointGrant() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (lastDailyPointDate !== today) {
+    lastDailyPointDate = today;
+    try {
+      const granted = grantDailyPoints();
+      if (granted > 0) {
+        console.log(`[point-system] デイリーボーナス: ${granted}人に100 Point付与`);
+      }
+    } catch (err) {
+      console.warn(`[point-system] デイリーボーナスエラー: ${err.message}`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Follower recalc
 // ---------------------------------------------------------------------------
 let computeFollowersFunc = null;
 
@@ -191,47 +202,46 @@ function doFollowerRecalc() {
   if (!computeFollowersFunc) return;
   try {
     const result = computeFollowersFunc();
-    console.log(`[auto-mgmt] Follower recalc: ${result.length} users updated`);
+    console.log(`[auto-mgmt] フォロワー再計算: ${result.length}人更新`);
   } catch (err) {
-    console.warn(`[auto-mgmt] Follower recalc failed: ${err.message}`);
+    console.warn(`[auto-mgmt] フォロワー再計算エラー: ${err.message}`);
   }
 }
 
 // ---------------------------------------------------------------------------
-// Start/stop auto-management timers
+// Start/stop
 // ---------------------------------------------------------------------------
 export function startAutoManagement() {
-  // Follower recalc timer (every 60s)
   if (!followerRecalcTimer) {
     followerRecalcTimer = setInterval(doFollowerRecalc, FOLLOWER_RECALC_INTERVAL_MS);
-    console.log(`[auto-mgmt] Follower recalc timer started (every ${FOLLOWER_RECALC_INTERVAL_MS / 1000}s)`);
+    console.log(`[auto-mgmt] フォロワー再計算タイマー開始 (${FOLLOWER_RECALC_INTERVAL_MS / 1000}秒間隔)`);
   }
 
-  // Anomaly check timer (every 30s)
   if (!anomalyCheckTimer) {
     anomalyCheckTimer = setInterval(checkAnomaliesAndAct, ANOMALY_CHECK_INTERVAL_MS);
-    console.log(`[auto-mgmt] Anomaly monitor started (every ${ANOMALY_CHECK_INTERVAL_MS / 1000}s)`);
+    console.log(`[auto-mgmt] 異常監視開始 (${ANOMALY_CHECK_INTERVAL_MS / 1000}秒間隔)`);
+  }
+
+  if (!dailyPointTimer) {
+    checkDailyPointGrant(); // Initial check
+    dailyPointTimer = setInterval(checkDailyPointGrant, DAILY_POINT_CHECK_INTERVAL_MS);
+    console.log(`[auto-mgmt] デイリーポイント監視開始`);
   }
 }
 
 export function stopAutoManagement() {
-  if (followerRecalcTimer) {
-    clearInterval(followerRecalcTimer);
-    followerRecalcTimer = null;
-  }
-  if (anomalyCheckTimer) {
-    clearInterval(anomalyCheckTimer);
-    anomalyCheckTimer = null;
-  }
-  console.log('[auto-mgmt] All auto-management timers stopped');
+  if (followerRecalcTimer) { clearInterval(followerRecalcTimer); followerRecalcTimer = null; }
+  if (anomalyCheckTimer) { clearInterval(anomalyCheckTimer); anomalyCheckTimer = null; }
+  if (dailyPointTimer) { clearInterval(dailyPointTimer); dailyPointTimer = null; }
+  console.log('[auto-mgmt] 全タイマー停止');
 }
 
 // ---------------------------------------------------------------------------
 // Manual control
 // ---------------------------------------------------------------------------
-export function manualPause(feature, reason = 'Manual pause') {
+export function manualPause(feature, reason = '手動停止') {
   if (!ALL_FEATURES.includes(feature)) {
-    return { success: false, error: `Unknown feature: ${feature}` };
+    return { success: false, error: `不明な機能: ${feature}` };
   }
   setPauseState(feature, true, reason);
   return { success: true, feature, paused: true };
@@ -239,13 +249,13 @@ export function manualPause(feature, reason = 'Manual pause') {
 
 export function manualResume(feature) {
   if (!ALL_FEATURES.includes(feature)) {
-    return { success: false, error: `Unknown feature: ${feature}` };
+    return { success: false, error: `不明な機能: ${feature}` };
   }
   setPauseState(feature, false, null);
   return { success: true, feature, paused: false };
 }
 
-export function pauseAll(reason = 'Manual pause all') {
+export function pauseAll(reason = '全機能手動停止') {
   for (const feature of ALL_FEATURES) {
     setPauseState(feature, true, reason);
   }
@@ -259,20 +269,17 @@ export function resumeAll() {
   return { success: true, features: ALL_FEATURES, paused: false };
 }
 
-// ---------------------------------------------------------------------------
-// Auto-management toggle
-// ---------------------------------------------------------------------------
 export function toggleAutoManagement(feature, enabled) {
   const validFeatures = ['auto_rate_adjust', 'auto_follower_recalc', 'auto_pause_resume'];
   if (!validFeatures.includes(feature)) {
-    return { success: false, error: `Unknown auto-management feature: ${feature}` };
+    return { success: false, error: `不明な自動管理機能: ${feature}` };
   }
   setAutoManagement(feature, enabled);
   return { success: true, feature, enabled };
 }
 
 // ---------------------------------------------------------------------------
-// Dashboard data (comprehensive)
+// Dashboard data
 // ---------------------------------------------------------------------------
 export function getDashboardData() {
   const todayUsage = getTodayApiUsage();
@@ -286,7 +293,10 @@ export function getDashboardData() {
   const anomalyCounts = getAnomalyCountToday();
   const dbInfo = getDbInfo();
   const dailySummaries = getRecentDailySummaries(3);
+  const threadSummaries = getRecentThreadSummaries(5);
   const autoMgmt = getAllAutoManagement();
+  const userPoints = getAllUserPoints();
+  const popularityRanking = getAllPopularity();
 
   let level = 'normal';
   if (usageRatio >= THRESHOLD_CRITICAL) level = 'critical';
@@ -322,16 +332,16 @@ export function getDashboardData() {
     rateAdjustment: evaluateRateAdjustment(),
     usageHistory,
     usageByModelAndFeature: usageLogToday,
-    recentLogs: recentLogs.map(l => ({
-      ...l,
-      success: l.success === 1,
-    })),
+    recentLogs: recentLogs.map(l => ({ ...l, success: l.success === 1 })),
     anomalies: {
       recent: recentAnomalies,
       todayCounts: anomalyCounts,
     },
     dbInfo,
     dailySummaries,
+    threadSummaries,
     controlledFeatures: ALL_FEATURES,
+    userPoints: userPoints.slice(0, 20),
+    popularityRanking: popularityRanking.slice(0, 20),
   };
 }

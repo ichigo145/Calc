@@ -40,7 +40,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Security middleware - Socket.io対応CSP
+// Security middleware - Socket.io対応CSP (リバースプロキシ対応)
 // ─────────────────────────────────────────────────────────────────────────────
 app.use(helmet({
   contentSecurityPolicy: {
@@ -49,14 +49,16 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'", "ws:", "wss:"],
+      connectSrc: ["'self'", "ws:", "wss:", "https:", "http:"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
-      frameAncestors: ["'none'"],
+      frameAncestors: ["*"],
       mediaSrc: ["'self'", "data:", "blob:"],
     },
   },
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginOpenerPolicy: false,
 }));
 
 const apiLimiter = rateLimit({
@@ -67,6 +69,17 @@ const apiLimiter = rateLimit({
   message: { error: 'リクエスト過多です。しばらくお待ちください。' },
 });
 app.use('/api', apiLimiter);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CORS (リバースプロキシ/サンドボックス対応)
+// ─────────────────────────────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Static files & Routes

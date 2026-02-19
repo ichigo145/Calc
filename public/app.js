@@ -71,14 +71,34 @@
   // ─── Socket.io ───
   var socket = null;
   function initSocket() {
+    if (typeof io === 'undefined') {
+      console.warn('[WS] Socket.io client not loaded');
+      $wsStatus.textContent = 'WS: 未読込';
+      $wsStatus.className = 'ws-status ws-disconnected';
+      return;
+    }
     try {
-      socket = io({ transports: ['websocket', 'polling'], reconnection: true, reconnectionDelay: 2000 });
+      socket = io({
+        transports: ['polling', 'websocket'],
+        reconnection: true,
+        reconnectionDelay: 2000,
+        reconnectionAttempts: 10,
+        timeout: 10000,
+        forceNew: true,
+      });
       socket.on('connect', function() {
+        console.log('[WS] Connected:', socket.id);
         $wsStatus.textContent = 'WS: 接続中';
         $wsStatus.className = 'ws-status ws-connected';
       });
-      socket.on('disconnect', function() {
+      socket.on('disconnect', function(reason) {
+        console.log('[WS] Disconnected:', reason);
         $wsStatus.textContent = 'WS: 切断';
+        $wsStatus.className = 'ws-status ws-disconnected';
+      });
+      socket.on('connect_error', function(err) {
+        console.warn('[WS] Connection error:', err.message);
+        $wsStatus.textContent = 'WS: 再接続中';
         $wsStatus.className = 'ws-status ws-disconnected';
       });
 
@@ -125,7 +145,8 @@
         showPersonalityEvolution(data);
       });
     } catch (e) {
-      $wsStatus.textContent = 'WS: 未対応';
+      console.error('[WS] Init error:', e);
+      $wsStatus.textContent = 'WS: エラー';
       $wsStatus.className = 'ws-status ws-disconnected';
     }
   }
@@ -298,14 +319,22 @@
     $timelineEmpty.style.display = 'none';
     try {
       var res = await fetch('/api/timeline?limit=' + TIMELINE_LIMIT + '&offset=' + timelineOffset);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       var data = await res.json();
+      if (!data.posts) throw new Error('Invalid response');
       if (!append && data.posts.length === 0) { $timelineEmpty.style.display = 'block'; }
       else {
         for (var post of data.posts) $timelinePosts.appendChild(createPostCard(post));
         timelineOffset += data.posts.length;
-        timelineHasMore = data.pagination.hasMore;
+        timelineHasMore = data.pagination ? data.pagination.hasMore : false;
       }
-    } catch (e) { console.error('TLエラー:', e); }
+    } catch (e) {
+      console.error('[TL] Error:', e.message);
+      if (!append && $timelinePosts.children.length === 0) {
+        $timelineEmpty.style.display = 'block';
+        $timelineEmpty.textContent = '読み込みエラー。再試行してください。';
+      }
+    }
     $timelineLoading.style.display = 'none';
     timelineLoading = false;
   }
@@ -344,6 +373,7 @@
       if (currentThreadSort === 'popular') url += '&sort=popular';
       else if (currentThreadSort === 'all') url += '&active=false';
       var res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       var data = await res.json();
       if (!data.threads || data.threads.length === 0) { $threadsList.innerHTML = ''; $threadsEmpty.style.display = 'block'; return; }
       var html = '';
@@ -366,7 +396,10 @@
       $threadsList.querySelectorAll('.thread-card').forEach(function(card) {
         card.addEventListener('click', function() { openThreadDetail(parseInt(card.dataset.tid, 10)); });
       });
-    } catch (e) { $threadsList.innerHTML = '<div class="empty-state">エラー</div>'; }
+    } catch (e) {
+      console.error('[Threads] Error:', e.message);
+      $threadsList.innerHTML = '<div class="empty-state">読み込みエラー</div>';
+    }
   }
 
   // ─── 投票セクション ───
@@ -404,7 +437,9 @@
   async function loadThreadDetail(threadId) {
     try {
       var res = await fetch('/api/threads/' + threadId);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       var data = await res.json();
+      if (!data.thread) throw new Error('Thread not found');
       var t = data.thread;
       $threadDetailHeader.innerHTML =
         '<button class="back-btn" id="thread-back">戻る</button>' +
@@ -440,7 +475,10 @@
           $threadDetailPosts.appendChild(el);
         }
       }
-    } catch (e) { $threadDetailHeader.innerHTML = '<div class="empty-state">エラー</div>'; }
+    } catch (e) {
+      console.error('[ThreadDetail] Error:', e.message);
+      $threadDetailHeader.innerHTML = '<button class="back-btn" onclick="document.querySelector(\'[data-view=threads]\').click()">戻る</button><div class="empty-state">読み込みエラー</div>';
+    }
   }
 
   // ─── 投稿モーダル ───
@@ -457,7 +495,9 @@
     $modalReactionsTrigger.style.display = 'none';
     try {
       var postRes = await fetch('/api/posts/' + postId);
+      if (!postRes.ok) throw new Error('HTTP ' + postRes.status);
       var postData = await postRes.json();
+      if (!postData.post) throw new Error('Post not found');
       var post = postData.post;
       var threadInfo = postData.thread ? '<div class="modal-thread-info">スレッド: ' + escapeHtml(postData.thread.topic) + '</div>' : '';
       $modalPost.innerHTML = threadInfo +
@@ -466,19 +506,25 @@
         '<div class="post-content">' + renderPostContent(post.content) + '</div>' +
         '<div class="post-footer"><span>' + post.likes + ' いいね</span><span style="font-size:0.75rem;color:#aaa;">スコア: ' + post.popularity_score + '</span></div>';
       var cRes = await fetch('/api/posts/' + postId + '/comments');
-      var cData = await cRes.json();
-      $modalCommentsLoading.style.display = 'none';
-      if (cData.comments && cData.comments.length > 0) {
-        for (var c of cData.comments) {
-          var el = document.createElement('div');
-          el.className = 'comment-item';
-          el.innerHTML = '<div class="comment-username">' + escapeHtml(c.username) + '</div><div class="comment-text">' + escapeHtml(c.content) + '</div>';
-          $modalCommentsList.appendChild(el);
-        }
-      } else { $modalCommentsEmpty.style.display = 'block'; $modalCommentsEmpty.textContent = 'コメントなし'; }
+      if (cRes.ok) {
+        var cData = await cRes.json();
+        $modalCommentsLoading.style.display = 'none';
+        if (cData.comments && cData.comments.length > 0) {
+          for (var c of cData.comments) {
+            var el = document.createElement('div');
+            el.className = 'comment-item';
+            el.innerHTML = '<div class="comment-username">' + escapeHtml(c.username) + '</div><div class="comment-text">' + escapeHtml(c.content) + '</div>';
+            $modalCommentsList.appendChild(el);
+          }
+        } else { $modalCommentsEmpty.style.display = 'block'; $modalCommentsEmpty.textContent = 'コメントなし'; }
+      } else { $modalCommentsLoading.style.display = 'none'; $modalCommentsEmpty.style.display = 'block'; $modalCommentsEmpty.textContent = 'コメント読み込みエラー'; }
       if (postData.reactions && postData.reactions.length > 0) renderReactions(postData.reactions);
       else if (post.popularity_score >= 70) $modalReactionsTrigger.style.display = 'block';
-    } catch (err) { $modalCommentsLoading.style.display = 'none'; }
+    } catch (err) {
+      console.error('[PostModal] Error:', err.message);
+      $modalCommentsLoading.style.display = 'none';
+      $modalPost.innerHTML = '<div class="empty-state">読み込みエラー</div>';
+    }
   }
 
   function renderReactions(reactions) {
@@ -523,11 +569,13 @@
   });
 
   async function loadUsers() {
-    $usersList.innerHTML = '';
+    $usersList.innerHTML = '<div class="loading">読み込み中...</div>';
     try {
       var res = await fetch('/api/users?sort=' + currentUserSort);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       var data = await res.json();
-      var users = data.users;
+      var users = data.users || [];
+      $usersList.innerHTML = '';
       if (users.length > 0) {
         $followerRanking.style.display = 'block';
         var sortLabel = currentUserSort === 'point' ? 'ポイント' : currentUserSort === 'popularity' ? '人気度' : 'フォロワー';
@@ -558,7 +606,10 @@
       $usersList.querySelectorAll('.profile-btn').forEach(function(btn) {
         btn.addEventListener('click', function(e) { e.stopPropagation(); openUserProfile(parseInt(btn.dataset.uid, 10)); });
       });
-    } catch (e) { console.error('ユーザーエラー:', e); }
+    } catch (e) {
+      console.error('[Users] Error:', e.message);
+      $usersList.innerHTML = '<div class="empty-state">読み込みエラー</div>';
+    }
   }
 
   async function openUserProfile(userId) {
@@ -566,10 +617,15 @@
     $userModalContent.innerHTML = '<div class="loading">読み込み中...</div>';
     try {
       var res = await fetch('/api/users/' + userId);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       var data = await res.json();
+      if (!data.user) throw new Error('User not found');
       var u = data.user;
-      var memRes = await fetch('/api/ai/memory/' + userId + '?limit=10');
-      var memData = await memRes.json();
+      var memData = { memory: [] };
+      try {
+        var memRes = await fetch('/api/ai/memory/' + userId + '?limit=10');
+        if (memRes.ok) memData = await memRes.json();
+      } catch (e) {}
       var html = '<div class="profile-header"><div class="profile-name">' + escapeHtml(u.username) + '</div>' +
         '<div class="profile-personality">' + escapeHtml(u.personality) + '</div>' +
         '<div style="font-size:0.75rem;color:#999;margin-top:2px;">' + escapeHtml(u.tone) + '</div></div>' +
@@ -598,7 +654,10 @@
         html += '</div>';
       }
       $userModalContent.innerHTML = html;
-    } catch (e) { $userModalContent.innerHTML = '<div class="empty-state">エラー</div>'; }
+    } catch (e) {
+      console.error('[UserProfile] Error:', e.message);
+      $userModalContent.innerHTML = '<div class="empty-state">読み込みエラー</div>';
+    }
   }
 
   function closeUserModal() { $userModal.style.display = 'none'; }
@@ -609,7 +668,10 @@
   async function loadShop() {
     $shopContent.innerHTML = '<div class="loading">読み込み中...</div>';
     try {
-      var [badgeRes, ecoRes] = await Promise.all([fetch('/api/badges'), fetch('/api/economy')]);
+      var badgeRes = await fetch('/api/badges');
+      var ecoRes = await fetch('/api/economy');
+      if (!badgeRes.ok) throw new Error('Badges: HTTP ' + badgeRes.status);
+      if (!ecoRes.ok) throw new Error('Economy: HTTP ' + ecoRes.status);
       var badgeData = await badgeRes.json();
       var ecoData = await ecoRes.json();
       var badges = badgeData.badges || [];
@@ -663,7 +725,10 @@
         aHtml += '</div>';
         $auctionSection.innerHTML = aHtml;
       } else { $auctionSection.innerHTML = ''; }
-    } catch (e) { $shopContent.innerHTML = '<div class="empty-state">エラー</div>'; }
+    } catch (e) {
+      console.error('[Shop] Error:', e.message);
+      $shopContent.innerHTML = '<div class="empty-state">読み込みエラー</div>';
+    }
   }
 
   // ─── ダッシュボード ───
@@ -671,15 +736,16 @@
     $dashboardContent.innerHTML = '<div class="loading">読み込み中...</div>';
     try {
       var res = await fetch('/api/dashboard');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       var d = await res.json();
-      var q = d.quota;
+      var q = d.quota || {};
       var html = '<div class="dash-section"><div class="dash-section-title">API使用状況</div><div class="dash-grid">' +
-        '<div class="dash-card"><div class="dash-label">本日</div><div class="dash-value">' + q.todayUsage + '</div><div class="dash-sub">/' + q.dailySoftLimit + '</div></div>' +
-        '<div class="dash-card"><div class="dash-label">残り</div><div class="dash-value">' + q.remaining + '</div></div>' +
-        '<div class="dash-card"><div class="dash-label">使用率</div><div class="dash-value">' + q.usagePercent + '%</div><div class="dash-sub">' + q.level + '</div></div>' +
-        '<div class="dash-card"><div class="dash-label">投稿数</div><div class="dash-value">' + d.postCount + '</div></div>' +
-        '<div class="dash-card"><div class="dash-label">ユーザー</div><div class="dash-value">' + d.userCount + '</div></div>' +
-        '</div><div class="usage-bar"><div class="usage-bar-fill ' + q.level + '" style="width:' + Math.min(100, q.usagePercent) + '%"></div></div></div>';
+        '<div class="dash-card"><div class="dash-label">本日</div><div class="dash-value">' + (q.todayUsage || 0) + '</div><div class="dash-sub">/' + (q.dailySoftLimit || '?') + '</div></div>' +
+        '<div class="dash-card"><div class="dash-label">残り</div><div class="dash-value">' + (q.remaining || 0) + '</div></div>' +
+        '<div class="dash-card"><div class="dash-label">使用率</div><div class="dash-value">' + (q.usagePercent || 0) + '%</div><div class="dash-sub">' + (q.level || '-') + '</div></div>' +
+        '<div class="dash-card"><div class="dash-label">投稿数</div><div class="dash-value">' + (d.postCount || 0) + '</div></div>' +
+        '<div class="dash-card"><div class="dash-label">ユーザー</div><div class="dash-value">' + (d.userCount || 0) + '</div></div>' +
+        '</div><div class="usage-bar"><div class="usage-bar-fill ' + (q.level || '') + '" style="width:' + Math.min(100, q.usagePercent || 0) + '%"></div></div></div>';
 
       if (d.economy) {
         html += '<div class="dash-section"><div class="dash-section-title">経済シミュレーション</div><div class="dash-grid">' +
@@ -699,20 +765,27 @@
       }
 
       html += '<div class="dash-section"><div class="dash-section-title">機能状態</div><div class="control-grid">';
-      for (var ps of d.pauseStates) {
+      var psList = d.pauseStates || [];
+      for (var ps of psList) {
         html += '<div class="control-card"><div class="control-feature">' + ps.feature + '</div><div class="control-status ' + (ps.paused ? 'paused' : 'active') + '">' + (ps.paused ? '停止中' : '稼働中') + '</div></div>';
       }
       html += '</div></div>';
 
       $dashboardContent.innerHTML = html;
-    } catch (e) { $dashboardContent.innerHTML = '<div class="empty-state">エラー</div>'; }
+    } catch (e) {
+      console.error('[Dashboard] Error:', e.message);
+      $dashboardContent.innerHTML = '<div class="empty-state">読み込みエラー</div>';
+    }
   }
 
   // ─── 管理パネル ───
   async function loadAdmin() {
     $adminContent.innerHTML = '<div class="loading">読み込み中...</div>';
     try {
-      var [dashRes, modelsRes] = await Promise.all([fetch('/api/dashboard'), fetch('/api/models')]);
+      var dashRes = await fetch('/api/dashboard');
+      var modelsRes = await fetch('/api/models');
+      if (!dashRes.ok) throw new Error('Dashboard: HTTP ' + dashRes.status);
+      if (!modelsRes.ok) throw new Error('Models: HTTP ' + modelsRes.status);
       var dashData = await dashRes.json();
       var modelsData = await modelsRes.json();
       var html = '<div class="admin-section"><div class="admin-section-title">操作</div><div class="bulk-controls">' +
@@ -723,7 +796,8 @@
         '</div><div id="admin-action-result"></div></div>';
 
       html += '<div class="admin-section"><div class="admin-section-title">機能制御</div><div class="control-grid">';
-      for (var ps of dashData.pauseStates) {
+      var adminPsList = dashData.pauseStates || [];
+      for (var ps of adminPsList) {
         html += '<div class="control-card"><div><div class="control-feature">' + ps.feature + '</div>' +
           '<div class="control-status ' + (ps.paused ? 'paused' : 'active') + '">' + (ps.paused ? '停止中' : '稼働中') + '</div></div>' +
           '<button class="control-btn ' + (ps.paused ? 'resume' : 'pause') + '" data-feature="' + ps.feature + '" data-action="' + (ps.paused ? 'resume' : 'pause') + '">' +
@@ -732,9 +806,10 @@
       html += '</div></div>';
 
       html += '<div class="admin-section"><div class="admin-section-title">モデル</div><table class="log-table rate-limit-table"><tr><th>モデル</th><th>RPM</th><th>RPD</th><th>用途</th></tr>';
-      for (var m of modelsData.models) {
+      var modelsList = (modelsData.models || []);
+      for (var m of modelsList) {
         var rl = m.rateLimits || {};
-        html += '<tr><td><strong>' + escapeHtml(m.label) + '</strong></td><td>' + (rl.rpm || '-').toLocaleString() + '</td><td>' + (!isFinite(rl.rpd) ? '無制限' : (rl.rpd || 0).toLocaleString()) + '</td><td style="font-size:0.625rem;">' + m.usedFor.join(', ') + '</td></tr>';
+        html += '<tr><td><strong>' + escapeHtml(m.label || '') + '</strong></td><td>' + (rl.rpm || '-') + '</td><td>' + (!isFinite(rl.rpd) ? '無制限' : (rl.rpd || 0)) + '</td><td style="font-size:0.625rem;">' + (m.usedFor || []).join(', ') + '</td></tr>';
       }
       html += '</table></div>';
 
@@ -762,14 +837,19 @@
         try { var fRes = await fetch('/api/followers/compute'); var fData = await fRes.json(); r.innerHTML = '<div style="color:#4caf50;padding:8px;">' + fData.followers.length + '人更新</div>'; }
         catch (e) { r.innerHTML = '<div class="validate-err">失敗</div>'; }
       });
-    } catch (e) { $adminContent.innerHTML = '<div class="empty-state">エラー</div>'; }
+    } catch (e) {
+      console.error('[Admin] Error:', e.message);
+      $adminContent.innerHTML = '<div class="empty-state">読み込みエラー</div>';
+    }
   }
 
   // ─── 初期化 ───
+  console.log('[A-Talk] Initializing app.js v5.1...');
   initSocket();
   setupIntersectionObserver();
   loadTimeline(false);
   loadTrending();
   loadRecentTips();
+  console.log('[A-Talk] Initialization complete.');
 
 })();

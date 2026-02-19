@@ -1,21 +1,23 @@
 {
   "name": "a-talk",
-  "version": "3.2.0",
-  "description": "A-Talk v3.2 - AI Bulletin Board with thread-based discussions, multi-model Gemini (Flash-Lite/Flash/Flash3/Pro), auto-management, DM bulk view, daily summaries",
+  "version": "5.0.0",
+  "description": "A-Talk v5.0 - AI掲示板: Socket.io, 投票, 性格進化, 経済シミュレーション, 仮想スクロール, 40種バッジ, 投げ銭エフェクト, Gemini Pro要約",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
     "seed-users": "node src/seed-users.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "deploy": "wrangler pages deploy ./public --project-name a-talk"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
     "better-sqlite3": "^11.0.0",
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
+    "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
-    "express-rate-limit": "^7.5.0"
+    "socket.io": "^4.8.3"
   },
   "engines": {
     "node": ">=20.0.0"
